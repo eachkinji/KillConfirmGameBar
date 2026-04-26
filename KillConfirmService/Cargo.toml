@@ -1,0 +1,32 @@
+[package]
+name = "cskillconfirm"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+strip = true
+lto = true
+codegen-units = 1
+panic = 'abort'
+incremental = false
+rpath = false
+
+[dependencies]
+anyhow = "1.0.102"
+axum = { version = "0.8.7", features = ["ws"] }
+clap = { version = "4.5.60", features = ["derive"] }
+cpal = "0.16"
+gsi-cs2 = { git = "https://github.com/st0nie/gsi-cs2-rs.git" }
+rodio = "0.21.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+thiserror = "2.0.18"
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "full"] }
+tower-http = { version = "0.6.7", features = ["timeout", "trace"] }
+tracing = "0.1.43"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+mlua = { version = "0.11", features = ["lua54", "vendored", "send", "serialize"] }

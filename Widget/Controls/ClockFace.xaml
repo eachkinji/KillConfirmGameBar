@@ -1,0 +1,80 @@
+<UserControl
+    x:Class="TestXboxGameBar.Controls.ClockFace"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Padding="10">
+        <Border
+            BorderBrush="#36FFFFFF"
+            BorderThickness="1"
+            CornerRadius="20">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#F018242D" Offset="0" />
+                    <GradientStop Color="#F0294150" Offset="0.55" />
+                    <GradientStop Color="#F00B1016" Offset="1" />
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Grid Padding="22">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid>
+                    <TextBlock
+                        Text="CURRENT TIME"
+                        FontSize="15"
+                        FontWeight="SemiBold"
+                        Foreground="#DCEBFF"
+                        Opacity="0.92" />
+                    <Border
+                        Width="54"
+                        Height="4"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        CornerRadius="4"
+                        Background="#62D8FF" />
+                </Grid>
+
+                <StackPanel
+                    Grid.Row="1"
+                    VerticalAlignment="Center"
+                    Orientation="Horizontal">
+                    <TextBlock
+                        x:Name="TimeText"
+                        FontFamily="Bahnschrift SemiBold"
+                        FontSize="58"
+                        FontWeight="SemiBold"
+                        Foreground="#FFFFFF"
+                        Text="00:00" />
+                    <TextBlock
+                        x:Name="SecondsText"
+                        Margin="5,16,0,0"
+                        FontFamily="Bahnschrift"
+                        FontSize="28"
+                        Foreground="#62D8FF"
+                        Text=":00" />
+                </StackPanel>
+
+                <Grid Grid.Row="2">
+                    <TextBlock
+                        x:Name="DateText"
+                        FontSize="14"
+                        Foreground="#B8CCDD"
+                        Text="2026-04-23 Thursday" />
+                    <TextBlock
+                        HorizontalAlignment="Right"
+                        FontSize="12"
+                        Foreground="#7890A8"
+                        Text="Xbox Game Bar" />
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,44 @@
+# Build outputs
+bin/
+obj/
+target/
+Output/
+Package/AppPackages/
+
+# Generated transfer/install packages
+KillConfirmGameBar_Transfer_*/
+KillConfirmGameBar_Transfer_*.zip
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+*.appxsym
+*.exe
+*.pdb
+
+# Generated copies refreshed from SourceAssets by Build-IntegratedPackage.ps1
+Widget/Assets/KillConfirm/
+Widget/KillConfirmService/
+KillConfirmService/sounds/
+
+# Local signing/test certificates
+*.pfx
+*.snk
+*.key
+*.pem
+*_TemporaryKey.pfx
+
+# Visual Studio and local user state
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.pubxml.user
+
+# OS/editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/

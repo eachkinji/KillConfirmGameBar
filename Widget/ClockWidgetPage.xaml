@@ -1,0 +1,394 @@
+<Page
+    x:Class="TestXboxGameBar.ClockWidgetPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:TestXboxGameBar.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="Transparent">
+
+    <Page.Resources>
+        <Style x:Key="ToolbarIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinWidth" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="#24303D" />
+            <Setter Property="Foreground" Value="#FFF8FAFC" />
+            <Setter Property="BorderBrush" Value="#3E5164" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="9" />
+        </Style>
+
+        <Style x:Key="OverlayComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinWidth" Value="88" />
+            <Setter Property="Foreground" Value="#FFF8FAFC" />
+            <Setter Property="Background" Value="#1E2833" />
+        </Style>
+    </Page.Resources>
+
+    <Grid Background="Transparent">
+        <Grid
+            x:Name="AnimationLayer"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            RenderTransformOrigin="0.5,0.5">
+            <Grid.RenderTransform>
+                <CompositeTransform x:Name="AnimationTransform" />
+            </Grid.RenderTransform>
+
+            <controls:KillConfirmAnimation
+                x:Name="PrimaryKillAnimation"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch" />
+
+            <controls:KillConfirmAnimation
+                x:Name="BadgeKillAnimation"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch" />
+
+            <Border
+                x:Name="StreakBadge"
+                Margin="0,12,12,0"
+                Padding="10,4"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="#E8F59E0B"
+                BorderBrush="#55FFF7ED"
+                BorderThickness="1"
+                CornerRadius="14"
+                Visibility="Collapsed">
+                <TextBlock
+                    x:Name="StreakBadgeText"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Foreground="#FF111827"
+                    Text="x7" />
+            </Border>
+        </Grid>
+
+        <Border
+            x:Name="ControlPanel"
+            Margin="6"
+            Padding="6"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            MaxWidth="300"
+            Background="#E711161D"
+            BorderBrush="#3D4D61"
+            BorderThickness="1"
+            CornerRadius="8">
+            <Grid RowSpacing="5">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button
+                        Grid.Column="0"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnStartServiceClick"
+                        ToolTipService.ToolTip="Start service">
+                        <PathIcon Data="M7,1 L9,1 L9,8 L7,8 Z M4.2,3.4 A5,5 0 1 0 11.8,3.4 L10.4,4.8 A3,3 0 1 1 5.6,4.8 Z" />
+                    </Button>
+
+                    <Button
+                        Grid.Column="1"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnCheckServerClick"
+                        ToolTipService.ToolTip="Check service">
+                        <PathIcon Data="M2,8 L6,12 L14,3 M13,10 L13,14 L9,14" />
+                    </Button>
+
+                    <Border
+                        x:Name="ConnectionStatusBadge"
+                        Grid.Column="2"
+                        Width="28"
+                        Height="28"
+                        Background="#223040"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        ToolTipService.ToolTip="Service status">
+                        <Border
+                            x:Name="ConnectionDot"
+                            Width="8"
+                            Height="8"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Background="#FF6B7280"
+                            CornerRadius="4" />
+                    </Border>
+
+                    <Border
+                        Grid.Column="4"
+                        Padding="8,0"
+                        Height="28"
+                        VerticalAlignment="Center"
+                        Background="#1E2833"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9">
+                        <TextBlock
+                            x:Name="VersionText"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="#FFBFD0E3"
+                            Text="v..." />
+                    </Border>
+                </Grid>
+
+                <Grid
+                    Grid.Row="1"
+                    ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Width="50"
+                        Height="28"
+                        Background="#1E2833"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="#FFBFD0E3"
+                            Text="VOICE" />
+                    </Border>
+
+                    <ComboBox
+                        x:Name="VoicePackSelector"
+                        Grid.Column="1"
+                        Style="{StaticResource OverlayComboBoxStyle}"
+                        HorizontalAlignment="Stretch"
+                        SelectedIndex="0"
+                        SelectionChanged="OnVoicePackSelectionChanged"
+                        ToolTipService.ToolTip="Select voice pack">
+                        <ComboBoxItem Tag="crossfire">cf</ComboBoxItem>
+                        <ComboBoxItem Tag="crossfire_v_fhd">cffhd</ComboBoxItem>
+                        <ComboBoxItem Tag="crossfire_v_sex">cfsex</ComboBoxItem>
+                    </ComboBox>
+                </Grid>
+
+                <Grid
+                    Grid.Row="2"
+                    ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Width="50"
+                        Height="28"
+                        Background="#1E2833"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="#FFBFD0E3"
+                            Text="TEST" />
+                    </Border>
+
+                    <ComboBox
+                        x:Name="TestPresetSelector"
+                        Grid.Column="1"
+                        Style="{StaticResource OverlayComboBoxStyle}"
+                        HorizontalAlignment="Stretch"
+                        SelectedIndex="0"
+                        ToolTipService.ToolTip="Select preview or test preset">
+                        <ComboBoxItem Tag="one">1</ComboBoxItem>
+                        <ComboBoxItem Tag="one_hs">1 HS</ComboBoxItem>
+                        <ComboBoxItem Tag="one_knife">1 K</ComboBoxItem>
+                        <ComboBoxItem Tag="one_first">1 F</ComboBoxItem>
+                        <ComboBoxItem Tag="one_last">1 L</ComboBoxItem>
+                        <ComboBoxItem Tag="gold_first">GF</ComboBoxItem>
+                        <ComboBoxItem Tag="gold_last">GL</ComboBoxItem>
+                        <ComboBoxItem Tag="two">2</ComboBoxItem>
+                        <ComboBoxItem Tag="three">3</ComboBoxItem>
+                        <ComboBoxItem Tag="four">4</ComboBoxItem>
+                        <ComboBoxItem Tag="five">5</ComboBoxItem>
+                        <ComboBoxItem Tag="six">6</ComboBoxItem>
+                        <ComboBoxItem Tag="seven">7</ComboBoxItem>
+                        <ComboBoxItem Tag="eight">8</ComboBoxItem>
+                        <ComboBoxItem Tag="nine">9</ComboBoxItem>
+                        <ComboBoxItem Tag="badge_first">FK</ComboBoxItem>
+                        <ComboBoxItem Tag="badge_last">LK</ComboBoxItem>
+                    </ComboBox>
+
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnPreviewClick"
+                        ToolTipService.ToolTip="Preview selected result">
+                        <PathIcon Data="M4,2 L13,8 L4,14 Z" />
+                    </Button>
+
+                    <Button
+                        Grid.Column="3"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnTestEventClick"
+                        ToolTipService.ToolTip="Send selected test event">
+                        <PathIcon Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z M11,5 L13,7 L13,9 L11,11 Z" />
+                    </Button>
+                </Grid>
+
+                <Grid
+                    Grid.Row="3"
+                    ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Grid.Column="0"
+                        Width="50"
+                        Height="28"
+                        Background="#1E2833"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9">
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="#FFBFD0E3"
+                            Text="VIEW" />
+                    </Border>
+
+                    <Button
+                        Grid.Column="1"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnResizeClick"
+                        ToolTipService.ToolTip="Default size">
+                        <PathIcon Data="M3,3 L13,3 L13,13 L3,13 Z M5,5 L11,5 L11,11 L5,11 Z" />
+                    </Button>
+
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnCenterClick"
+                        ToolTipService.ToolTip="Center window">
+                        <PathIcon Data="M8,1 L8,15 M1,8 L15,8 M4,4 L12,4 L12,12 L4,12 Z" />
+                    </Button>
+
+                    <Button
+                        Grid.Column="3"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnLowerThirdClick"
+                        ToolTipService.ToolTip="Place icon at lower third">
+                        <PathIcon Data="M8,2 L13,7 L10,7 L10,10 L6,10 L6,7 L3,7 Z M2,12 L14,12 L14,14 L2,14 Z" />
+                    </Button>
+
+                    <Button
+                        Grid.Column="5"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnMoveUpClick"
+                        ToolTipService.ToolTip="Move icon up">
+                        <PathIcon Data="M8,2 L14,10 L10,10 L10,15 L6,15 L6,10 L2,10 Z" />
+                    </Button>
+
+                    <Button
+                        Grid.Column="6"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnMoveDownClick"
+                        ToolTipService.ToolTip="Move icon down">
+                        <PathIcon Data="M6,1 L10,1 L10,6 L14,6 L8,14 L2,6 L6,6 Z" />
+                    </Button>
+                </Grid>
+
+                <Grid
+                    Grid.Row="4"
+                    ColumnSpacing="6"
+                    VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button
+                        Grid.Column="0"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnScaleDownClick"
+                        ToolTipService.ToolTip="Shrink icon">
+                        <PathIcon Data="M3,7 L13,7 L13,9 L3,9 Z" />
+                    </Button>
+
+                    <Slider
+                        x:Name="BrightnessSlider"
+                        Grid.Column="1"
+                        Height="20"
+                        Minimum="0"
+                        Maximum="100"
+                        StepFrequency="5"
+                        ValueChanged="OnBrightnessValueChanged"
+                        ToolTipService.ToolTip="Animation brightness" />
+
+                    <Button
+                        Grid.Column="2"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnScaleUpClick"
+                        ToolTipService.ToolTip="Enlarge icon">
+                        <PathIcon Data="M7,3 L9,3 L9,7 L13,7 L13,9 L9,9 L9,13 L7,13 L7,9 L3,9 L3,7 L7,7 Z" />
+                    </Button>
+
+                    <Slider
+                        x:Name="ContrastSlider"
+                        Grid.Column="3"
+                        Height="20"
+                        Minimum="0"
+                        Maximum="100"
+                        StepFrequency="5"
+                        ValueChanged="OnContrastValueChanged"
+                        ToolTipService.ToolTip="Animation contrast" />
+
+                    <Button
+                        Grid.Column="4"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnResetVisualAdjustmentsClick"
+                        ToolTipService.ToolTip="Reset visual adjustments">
+                        <PathIcon Data="M8,1 L14,4 L8,7 L8,4 A4,4 0 1 0 12,8 L14,8 A6,6 0 1 1 8,2 Z" />
+                    </Button>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>
