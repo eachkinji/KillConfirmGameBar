@@ -1,7 +1,7 @@
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",
-    [string]$MsBuildPath = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe"
+    [string]$MsBuildPath = ""
 )
 
 $ErrorActionPreference = "Stop"

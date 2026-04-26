@@ -1,7 +1,7 @@
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",
-    [string]$MsBuildPath = "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe"
+    [string]$MsBuildPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,8 +58,25 @@ else {
     $CargoPath = (Get-Command cargo).Source
 }
 
-if (-not (Test-Path $MsBuildPath)) {
-    throw "MSBuild was not found at $MsBuildPath"
+if (-not $MsBuildPath) {
+    $MsBuildCommand = Get-Command msbuild -ErrorAction SilentlyContinue
+    if ($MsBuildCommand) {
+        $MsBuildPath = $MsBuildCommand.Source
+    }
+    else {
+        $MsBuildCandidates = @(
+            "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\amd64\MSBuild.exe",
+            "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe",
+            "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
+            "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
+            "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
+        )
+        $MsBuildPath = $MsBuildCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    }
+}
+
+if (-not $MsBuildPath -or -not (Test-Path $MsBuildPath)) {
+    throw "MSBuild was not found. Install Visual Studio Build Tools or pass -MsBuildPath."
 }
 
 if (-not (Test-Path $PackageProjectPath)) {
