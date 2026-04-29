@@ -24,6 +24,34 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Stretch="None" />
+
+            <Border
+                x:Name="LoadingOverlay"
+                Width="150"
+                Height="88"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#CC10131A"
+                CornerRadius="6"
+                Visibility="Collapsed">
+                <StackPanel
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="8">
+                    <ProgressRing
+                        x:Name="LoadingRing"
+                        Width="34"
+                        Height="34"
+                        IsActive="False" />
+                    <TextBlock
+                        x:Name="LoadingText"
+                        HorizontalAlignment="Center"
+                        FontSize="15"
+                        FontWeight="SemiBold"
+                        Foreground="White"
+                        Text="Loading 0%" />
+                </StackPanel>
+            </Border>
         </Grid>
     </Viewbox>
 </UserControl>

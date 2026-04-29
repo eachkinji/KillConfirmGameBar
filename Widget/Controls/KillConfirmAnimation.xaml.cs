@@ -58,7 +58,7 @@ namespace TestXboxGameBar.Controls
         public void Play(int killCount, bool isHeadshot = false)
         {
             int normalizedKillCount = Math.Max(1, killCount);
-            PlayInternal(() => LoadPreferredAssetAsync(normalizedKillCount, isHeadshot));
+            PlayInternal(progress => LoadPreferredAssetAsync(normalizedKillCount, isHeadshot, progress));
         }
 
         public void PlayNamed(string assetKey)
@@ -69,7 +69,7 @@ namespace TestXboxGameBar.Controls
                 return;
             }
 
-            PlayInternal(() => LoadNamedAssetAsync(assetKey));
+            PlayInternal(progress => LoadNamedAssetAsync(assetKey, progress));
         }
 
         public Task PreloadCommonAnimationsAsync()
@@ -119,19 +119,29 @@ namespace TestXboxGameBar.Controls
             _preloadTask = null;
         }
 
-        private async void PlayInternal(Func<Task<AnimationAsset>> assetLoader)
+        private async void PlayInternal(Func<IProgress<int>, Task<AnimationAsset>> assetLoader)
         {
             int token = ++_playToken;
+            bool isLoading = true;
+            var progress = new Progress<int>(value =>
+            {
+                if (isLoading && token == _playToken)
+                {
+                    ShowLoadingProgress(value);
+                }
+            });
 
             try
             {
-                AnimationAsset asset = await assetLoader();
+                ShowLoadingProgress(0);
+                AnimationAsset asset = await assetLoader(progress);
 
                 if (token != _playToken)
                 {
                     return;
                 }
 
+                isLoading = false;
                 _timer.Stop();
                 _currentMetadata = asset.Metadata;
                 _currentFrames = asset.Frames;
@@ -144,6 +154,7 @@ namespace TestXboxGameBar.Controls
                 SpriteImage.Width = asset.Metadata.FrameWidth;
                 SpriteImage.Height = asset.Metadata.FrameHeight;
 
+                HideLoadingProgress();
                 Visibility = Visibility.Visible;
                 _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / asset.Metadata.Fps);
                 ShowFrame(0);
@@ -151,17 +162,19 @@ namespace TestXboxGameBar.Controls
             }
             catch
             {
+                isLoading = false;
+                HideLoadingProgress();
                 Visibility = Visibility.Collapsed;
             }
         }
 
-        private async Task<AnimationAsset> LoadPreferredAssetAsync(int spriteNumber, bool isHeadshot)
+        private async Task<AnimationAsset> LoadPreferredAssetAsync(int spriteNumber, bool isHeadshot, IProgress<int> progress)
         {
             if (isHeadshot)
             {
                 try
                 {
-                    return await LoadNamedAssetAsync(HeadshotAssetKey);
+                    return await LoadNamedAssetAsync(HeadshotAssetKey, progress);
                 }
                 catch
                 {
@@ -173,7 +186,7 @@ namespace TestXboxGameBar.Controls
             {
                 try
                 {
-                    return await LoadNamedAssetAsync(remasteredAssetKey);
+                    return await LoadNamedAssetAsync(remasteredAssetKey, progress);
                 }
                 catch
                 {
@@ -227,7 +240,7 @@ namespace TestXboxGameBar.Controls
             {
                 try
                 {
-                    await LoadNamedAssetAsync(assetKey);
+                    await LoadNamedAssetAsync(assetKey, null);
                 }
                 catch
                 {
@@ -241,7 +254,7 @@ namespace TestXboxGameBar.Controls
             {
                 try
                 {
-                    await LoadNamedAssetAsync(assetKey);
+                    await LoadNamedAssetAsync(assetKey, null);
                 }
                 catch
                 {
@@ -249,32 +262,32 @@ namespace TestXboxGameBar.Controls
             }
         }
 
-        private async Task<AnimationAsset> LoadNamedAssetAsync(string assetKey)
+        private async Task<AnimationAsset> LoadNamedAssetAsync(string assetKey, IProgress<int> progress = null)
         {
             switch (assetKey)
             {
                 case HeadshotAssetKey:
-                    return await LoadFrameSequenceAssetAsync(HeadshotAssetKey, HeadshotAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(HeadshotAssetKey, HeadshotAssetKey, FrameSequenceFps, 0, progress);
                 case OneKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(OneKillRemasterAssetKey, OneKillRemasterAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(OneKillRemasterAssetKey, OneKillRemasterAssetKey, FrameSequenceFps, 0, progress);
                 case TwoKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(TwoKillRemasterAssetKey, TwoKillRemasterAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(TwoKillRemasterAssetKey, TwoKillRemasterAssetKey, FrameSequenceFps, 0, progress);
                 case ThreeKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(ThreeKillRemasterAssetKey, ThreeKillRemasterAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(ThreeKillRemasterAssetKey, ThreeKillRemasterAssetKey, FrameSequenceFps, 0, progress);
                 case FourKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(FourKillRemasterAssetKey, FourKillRemasterAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(FourKillRemasterAssetKey, FourKillRemasterAssetKey, FrameSequenceFps, 0, progress);
                 case FiveKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(FiveKillRemasterAssetKey, FiveKillRemasterAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(FiveKillRemasterAssetKey, FiveKillRemasterAssetKey, FrameSequenceFps, 0, progress);
                 case SixKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(SixKillRemasterAssetKey, SixKillRemasterAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(SixKillRemasterAssetKey, SixKillRemasterAssetKey, FrameSequenceFps, 0, progress);
                 case FirstKillAssetKey:
-                    return await LoadFrameSequenceAssetAsync(FirstKillAssetKey, FirstKillAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(FirstKillAssetKey, FirstKillAssetKey, FrameSequenceFps, 0, progress);
                 case GoldHeadshotAssetKey:
-                    return await LoadFrameSequenceAssetAsync(GoldHeadshotAssetKey, GoldHeadshotAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(GoldHeadshotAssetKey, GoldHeadshotAssetKey, FrameSequenceFps, 0, progress);
                 case KnifeKillAssetKey:
-                    return await LoadFrameSequenceAssetAsync(KnifeKillAssetKey, KnifeKillAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(KnifeKillAssetKey, KnifeKillAssetKey, FrameSequenceFps, 0, progress);
                 case LastKillAssetKey:
-                    return await LoadFrameSequenceAssetAsync(LastKillAssetKey, LastKillAssetKey, FrameSequenceFps, 0);
+                    return await LoadFrameSequenceAssetAsync(LastKillAssetKey, LastKillAssetKey, FrameSequenceFps, 0, progress);
                 default:
                     throw new FileNotFoundException("Unsupported animation asset: " + assetKey);
             }
@@ -287,7 +300,8 @@ namespace TestXboxGameBar.Controls
                 cacheKey,
                 folderName,
                 referenceProfile.TargetFps,
-                referenceProfile.TargetFrameCount);
+                referenceProfile.TargetFrameCount,
+                null);
         }
 
         private async Task<AnimationAsset> LoadSpriteSheetAssetAsync(string assetName)
@@ -381,10 +395,10 @@ namespace TestXboxGameBar.Controls
             return frames;
         }
 
-        private async Task<AnimationAsset> LoadFrameSequenceAssetAsync(string cacheKey, string folderName, int fps, int targetFrameCount)
+        private async Task<AnimationAsset> LoadFrameSequenceAssetAsync(string cacheKey, string folderName, int fps, int targetFrameCount, IProgress<int> progress = null)
         {
             SpriteMetadata metadata = await LoadFrameSequenceMetadataAsync(cacheKey, folderName, fps, targetFrameCount);
-            IReadOnlyList<WriteableBitmap> frames = await LoadFrameSequenceFramesAsync(cacheKey, folderName, metadata, targetFrameCount);
+            IReadOnlyList<WriteableBitmap> frames = await LoadFrameSequenceFramesAsync(cacheKey, folderName, metadata, targetFrameCount, progress);
             return new AnimationAsset(metadata, frames);
         }
 
@@ -423,11 +437,12 @@ namespace TestXboxGameBar.Controls
             }
         }
 
-        private async Task<IReadOnlyList<WriteableBitmap>> LoadFrameSequenceFramesAsync(string cacheKey, string folderName, SpriteMetadata metadata, int targetFrameCount)
+        private async Task<IReadOnlyList<WriteableBitmap>> LoadFrameSequenceFramesAsync(string cacheKey, string folderName, SpriteMetadata metadata, int targetFrameCount, IProgress<int> progress)
         {
             string resolvedCacheKey = $"{cacheKey}:{metadata.Fps}:{targetFrameCount}";
             if (FrameCache.TryGetValue(resolvedCacheKey, out IReadOnlyList<WriteableBitmap> cached))
             {
+                progress?.Report(100);
                 return cached;
             }
 
@@ -435,8 +450,9 @@ namespace TestXboxGameBar.Controls
             IReadOnlyList<StorageFile> selectedFiles = SelectFrameSubset(files, targetFrameCount);
             var frames = new List<WriteableBitmap>(selectedFiles.Count);
 
-            foreach (StorageFile file in selectedFiles)
+            for (int index = 0; index < selectedFiles.Count; index++)
             {
+                StorageFile file = selectedFiles[index];
                 using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read))
                 {
                     BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
@@ -468,10 +484,35 @@ namespace TestXboxGameBar.Controls
                     bitmap.Invalidate();
                     frames.Add(bitmap);
                 }
+
+                int percent = selectedFiles.Count == 0
+                    ? 100
+                    : (int)Math.Round(((index + 1) * 100.0) / selectedFiles.Count);
+                progress?.Report(Math.Max(1, Math.Min(100, percent)));
             }
 
             FrameCache[resolvedCacheKey] = frames;
             return frames;
+        }
+
+        private void ShowLoadingProgress(int percent)
+        {
+            percent = Math.Max(0, Math.Min(100, percent));
+            _timer.Stop();
+            SpriteImage.Source = null;
+            Viewport.Width = MaxCachedFrameWidth;
+            Viewport.Height = MaxCachedFrameHeight;
+            ViewportClip.Rect = new Rect(0, 0, MaxCachedFrameWidth, MaxCachedFrameHeight);
+            LoadingText.Text = $"Loading {percent}%";
+            LoadingRing.IsActive = true;
+            LoadingOverlay.Visibility = Visibility.Visible;
+            Visibility = Visibility.Visible;
+        }
+
+        private void HideLoadingProgress()
+        {
+            LoadingRing.IsActive = false;
+            LoadingOverlay.Visibility = Visibility.Collapsed;
         }
 
         private async Task<ReferenceAnimationProfile> LoadReferenceAnimationProfileAsync(int? spriteNumber = null)

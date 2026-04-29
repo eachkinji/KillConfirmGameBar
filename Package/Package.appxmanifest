@@ -11,7 +11,7 @@
   <Identity
     Name="KillConfirmGameBar.Overlay"
     Publisher="CN=TestXboxGameBar"
-    Version="1.0.0.53" />
+    Version="1.0.0.57" />
 
   <mp:PhoneIdentity PhoneProductId="8f70c4bd-4270-4a4f-a7d1-91ae48dbe9f4" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
