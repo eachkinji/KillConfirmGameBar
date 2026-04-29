@@ -24,7 +24,7 @@
                 Foreground="#F7FBFF" />
             <TextBlock
                 Margin="0,8,0,0"
-                Text="Xbox Game Bar widget"
+                Text="Open Xbox Game Bar, then select Kill Confirm Overlay from the widget menu."
                 FontSize="16"
                 Foreground="#B7C7D8"
                 TextWrapping="WrapWholeWords" />
@@ -39,13 +39,17 @@
         <StackPanel
             Grid.Row="2"
             HorizontalAlignment="Center"
-            Orientation="Horizontal"
-            Spacing="8">
-            <Button Content="1" Tag="1" Click="OnPreviewClick" />
-            <Button Content="2" Tag="2" Click="OnPreviewClick" />
-            <Button Content="3" Tag="3" Click="OnPreviewClick" />
-            <Button Content="4" Tag="4" Click="OnPreviewClick" />
-            <Button Content="5" Tag="5" Click="OnPreviewClick" />
+            Spacing="10">
+            <Button
+                MinWidth="220"
+                HorizontalAlignment="Center"
+                Click="OnOpenGameBarClick"
+                Content="Open Xbox Game Bar" />
+            <TextBlock
+                HorizontalAlignment="Center"
+                FontSize="13"
+                Foreground="#7F96AA"
+                Text="You can also press Win+G." />
         </StackPanel>
     </Grid>
 </Page>

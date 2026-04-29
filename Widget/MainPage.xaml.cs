@@ -1,3 +1,5 @@
+using System;
+using Windows.System;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml;
 
@@ -16,18 +18,9 @@ namespace TestXboxGameBar
             KillAnimation.Play(1);
         }
 
-        private void OnPreviewClick(object sender, RoutedEventArgs e)
+        private async void OnOpenGameBarClick(object sender, RoutedEventArgs e)
         {
-            var button = sender as Button;
-            if (button?.Tag == null)
-            {
-                return;
-            }
-
-            if (int.TryParse(button.Tag.ToString(), out int killCount))
-            {
-                KillAnimation.Play(killCount);
-            }
+            await Launcher.LaunchUriAsync(new Uri("ms-gamebar:"));
         }
     }
 }
