@@ -38,7 +38,6 @@ Type: filesandordirs; Name: "{app}\Payload"
 Source: "{#TransferRoot}\*"; DestDir: "{app}\Payload"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Install Kill Confirm Overlay"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\Payload\Install-KillConfirm.ps1"""; WorkingDir: "{app}\Payload"
 Name: "{group}\Open Xbox Game Bar"; Filename: "explorer.exe"; Parameters: "ms-gamebar:"
 
 [Run]
