@@ -71,14 +71,63 @@ $ErrorActionPreference = "Stop"
 
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $OverlayRoot = Join-Path $ScriptRoot "OverlayPackage"
-$InstallEntry = Join-Path $OverlayRoot "Install.ps1"
 $PackageFamilyName = "KillConfirmGameBar.Overlay_5jgcw66eyez0m"
+$LogPath = Join-Path $env:TEMP "KillConfirmGameBar_Install.log"
 
-if (-not (Test-Path $InstallEntry)) {
-    throw "Install.ps1 was not found under $OverlayRoot"
+function Write-InstallLog {
+    param([string]$Message)
+    $line = "[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $Message
+    Add-Content -LiteralPath $LogPath -Value $line -Encoding UTF8
+    Write-Host $Message
 }
 
-& powershell -ExecutionPolicy Bypass -File $InstallEntry -Force
+function Install-OverlayPackage {
+    if (-not (Test-Path $OverlayRoot)) {
+        throw "OverlayPackage was not found under $ScriptRoot"
+    }
+
+    $msix = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.msix" -File | Select-Object -First 1
+    if (-not $msix) {
+        throw "MSIX package was not found under $OverlayRoot"
+    }
+
+    $cert = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.cer" -File | Select-Object -First 1
+    if ($cert) {
+        Write-InstallLog "Installing package certificate..."
+        Import-Certificate -FilePath $cert.FullName -CertStoreLocation "Cert:\LocalMachine\TrustedPeople" | Out-Null
+        Import-Certificate -FilePath $cert.FullName -CertStoreLocation "Cert:\LocalMachine\Root" | Out-Null
+    }
+    else {
+        Write-InstallLog "No package certificate found beside MSIX."
+    }
+
+    $dependencies = @()
+    $dependencyRoot = Join-Path $OverlayRoot "Dependencies\x64"
+    if (Test-Path $dependencyRoot) {
+        $dependencies = @(Get-ChildItem -LiteralPath $dependencyRoot -Include "*.appx", "*.msix" -File -Recurse | ForEach-Object { $_.FullName })
+    }
+
+    Write-InstallLog "Installing MSIX package: $($msix.Name)"
+    if ($dependencies.Count -gt 0) {
+        Add-AppxPackage -Path $msix.FullName -DependencyPath $dependencies -ForceApplicationShutdown -ForceUpdateFromAnyVersion
+    }
+    else {
+        Add-AppxPackage -Path $msix.FullName -ForceApplicationShutdown -ForceUpdateFromAnyVersion
+    }
+}
+
+try {
+    if (Test-Path $LogPath) {
+        Remove-Item -LiteralPath $LogPath -Force
+    }
+
+    Install-OverlayPackage
+}
+catch {
+    Write-InstallLog "Install failed: $($_.Exception.Message)"
+    Write-InstallLog "Log: $LogPath"
+    throw
+}
 
 function Get-SteamLibraryRoots {
     $roots = New-Object System.Collections.Generic.List[string]
@@ -227,6 +276,7 @@ Use on another PC:
 Notes:
 - The companion service is embedded inside the MSIX package.
 - The widget starts its packaged companion service directly from the installed app.
+- The install script installs the MSIX package directly instead of requiring Visual Studio developer scripts.
 - The install script tries to create CS2's gamestate_integration_killconfirm.cfg automatically.
 - The widget still talks to 127.0.0.1 internally, so the install script adds the required loopback exemption.
 - If Xbox Game Bar was open during install, close it and open it again.
