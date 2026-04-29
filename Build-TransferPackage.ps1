@@ -38,6 +38,18 @@ Get-Process cskillconfirm -ErrorAction SilentlyContinue | Stop-Process -Force
 
 & (Join-Path $Root "Build-IntegratedPackage.ps1") -Configuration $Configuration -Platform $Platform -MsBuildPath $MsBuildPath
 
+if (-not (Test-Path (Join-Path $PackageSourceRoot $PackageFileName))) {
+    $ProducedPackage = Get-ChildItem -LiteralPath $AppPackagesRoot -Filter "*.msix" -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like "*$Version*" -and $_.Name -like "*$Platform*" } |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+
+    if ($ProducedPackage) {
+        $PackageSourceRoot = $ProducedPackage.DirectoryName
+        $PackageFileName = $ProducedPackage.Name
+    }
+}
+
 if (-not (Test-Path $PackageSourceRoot)) {
     throw "Expected package folder was not produced: $PackageSourceRoot"
 }
