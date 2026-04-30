@@ -57,6 +57,10 @@ namespace TestXboxGameBar
             " \"buffer\"  \"0.1\"\r\n" +
             " \"throttle\" \"0.1\"\r\n" +
             " \"heartbeat\" \"30.0\"\r\n" +
+            " \"auth\"\r\n" +
+            " {\r\n" +
+            "   \"token\" \"killconfirm\"\r\n" +
+            " }\r\n" +
             " \"data\"\r\n" +
             " {\r\n" +
             "   \"provider\"           \"1\"\r\n" +

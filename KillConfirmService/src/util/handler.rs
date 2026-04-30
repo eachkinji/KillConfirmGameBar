@@ -37,7 +37,7 @@ pub async fn update(
         .last_gsi_post_unix_ms
         .store(unix_time_ms(), Ordering::Relaxed);
 
-    let data: Body = match serde_json::from_slice(&body) {
+    let data: Body = match parse_gsi_body(&body) {
         Ok(data) => data,
         Err(error) => {
             app_state.gsi_parse_errors.fetch_add(1, Ordering::Relaxed);
@@ -254,6 +254,20 @@ pub async fn update(
     }
 
     Ok(StatusCode::OK)
+}
+
+fn parse_gsi_body(body: &[u8]) -> serde_json::Result<Body> {
+    let mut value: serde_json::Value = serde_json::from_slice(body)?;
+
+    if let Some(object) = value.as_object_mut() {
+        object.entry("auth").or_insert_with(|| {
+            serde_json::json!({
+                "token": "killconfirm"
+            })
+        });
+    }
+
+    serde_json::from_value(value)
 }
 
 fn unix_time_ms() -> u64 {

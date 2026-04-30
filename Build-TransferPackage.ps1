@@ -34,7 +34,14 @@ if (-not $resolvedTransferRoot.StartsWith($resolvedWorkspaceRoot, [System.String
     throw "Refusing to write outside the workspace root: $resolvedTransferRoot"
 }
 
-Get-Process cskillconfirm -ErrorAction SilentlyContinue | Stop-Process -Force
+$KillConfirmProcessNames = @(
+    "cskillconfirm",
+    "TestXboxGameBar",
+    "KillConfirmOverlay",
+    "KillConfirmGameBar"
+)
+
+Get-Process -Name $KillConfirmProcessNames -ErrorAction SilentlyContinue | Stop-Process -Force
 
 & (Join-Path $Root "Build-IntegratedPackage.ps1") -Configuration $Configuration -Platform $Platform -MsBuildPath $MsBuildPath
 
@@ -98,7 +105,13 @@ function Install-OverlayPackage {
         throw "OverlayPackage was not found under $ScriptRoot"
     }
 
-    Get-Process cskillconfirm,TestXboxGameBar -ErrorAction SilentlyContinue | Stop-Process -Force
+    $processNames = @(
+        "cskillconfirm",
+        "TestXboxGameBar",
+        "KillConfirmOverlay",
+        "KillConfirmGameBar"
+    )
+    Get-Process -Name $processNames -ErrorAction SilentlyContinue | Stop-Process -Force
 
     $msix = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.msix" -File | Select-Object -First 1
     if (-not $msix) {
@@ -216,6 +229,10 @@ function Install-Cs2GsiConfig {
         ' "buffer"  "0.1"',
         ' "throttle" "0.1"',
         ' "heartbeat" "30.0"',
+        ' "auth"',
+        ' {',
+        '   "token" "killconfirm"',
+        ' }',
         ' "data"',
         ' {',
         '   "provider"           "1"',
