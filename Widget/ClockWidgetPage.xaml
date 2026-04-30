@@ -96,6 +96,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <TextBlock
@@ -410,6 +411,15 @@
                         Click="OnPreviewClick"
                         ToolTipService.ToolTip="Preview selected result">
                         <PathIcon Data="M4,2 L13,8 L4,14 Z" />
+                    </Button>
+
+                    <Button
+                        x:Name="SendTestButton"
+                        Grid.Column="3"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnTestEventClick"
+                        ToolTipService.ToolTip="Send selected test event">
+                        <PathIcon Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z M11,5 L13,7 L13,9 L11,11 Z" />
                     </Button>
 
                 </Grid>

@@ -259,7 +259,7 @@ namespace TestXboxGameBar
             ScaleAnimation(ScaleDownFactor);
         }
 
-        private async void OnPreviewClick(object sender, RoutedEventArgs e)
+        private void OnPreviewClick(object sender, RoutedEventArgs e)
         {
             TestPreset preset = GetSelectedTestPreset();
             if (preset == null)
@@ -269,6 +269,17 @@ namespace TestXboxGameBar
                     KillCount = DefaultPreviewKillCount,
                     PlayMainAnimation = true
                 });
+                return;
+            }
+
+            HandleKillEvent(preset.ToKillEvent());
+        }
+
+        private async void OnTestEventClick(object sender, RoutedEventArgs e)
+        {
+            TestPreset preset = GetSelectedTestPreset();
+            if (preset == null)
+            {
                 return;
             }
 
@@ -618,6 +629,7 @@ namespace TestXboxGameBar
 
             ToolTipService.SetToolTip(TestPresetSelector, LocalizationManager.Text("TestPresetTooltip"));
             ToolTipService.SetToolTip(PreviewButton, LocalizationManager.Text("PreviewTooltip"));
+            ToolTipService.SetToolTip(SendTestButton, LocalizationManager.Text("SendTestTooltip"));
 
             ToolTipService.SetToolTip(DefaultSizeButton, LocalizationManager.Text("DefaultSizeTooltip"));
             ToolTipService.SetToolTip(CenterButton, LocalizationManager.Text("CenterWindowTooltip"));
