@@ -1,5 +1,9 @@
 # KillConfirmGameBar
 
+夸克网盘：
+链接：https://pan.quark.cn/s/a248e8f0ae74?pwd=DBWT
+提取码：DBWT
+
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 KillConfirmGameBar is a Counter-Strike 2 kill-confirm overlay for Xbox Game Bar.
