@@ -1,8 +1,8 @@
 # KillConfirmGameBar
 
 夸克网盘：
-链接：https://pan.quark.cn/s/a248e8f0ae74?pwd=DBWT
-提取码：DBWT
+链接：https://pan.quark.cn/s/0f1f493e93f9?pwd=DFY8
+提取码：DFY8
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
