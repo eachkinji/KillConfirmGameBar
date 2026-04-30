@@ -75,7 +75,7 @@
             Padding="6"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
-            MaxWidth="300"
+            MaxWidth="360"
             Background="#E711161D"
             BorderBrush="#3D4D61"
             BorderThickness="1"
@@ -87,55 +87,41 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Button
-                        Grid.Column="0"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
-                        Click="OnStartServiceClick"
-                        ToolTipService.ToolTip="Start service">
-                        <PathIcon Data="M7,1 L9,1 L9,8 L7,8 Z M4.2,3.4 A5,5 0 1 0 11.8,3.4 L10.4,4.8 A3,3 0 1 1 5.6,4.8 Z" />
-                    </Button>
+                    <TextBlock
+                        x:Name="PinHintText"
+                        VerticalAlignment="Center"
+                        FontSize="10"
+                        FontWeight="SemiBold"
+                        Foreground="#FFFFE7A3"
+                        Text="Pin the widget in the top-right to keep the icon on screen."
+                        TextTrimming="CharacterEllipsis"
+                        ToolTipService.ToolTip="Click the pin button in Xbox Game Bar's top-right corner." />
 
-                    <Button
+                    <ComboBox
+                        x:Name="LanguageSelector"
                         Grid.Column="1"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
-                        Click="OnCheckServerClick"
-                        ToolTipService.ToolTip="Check service">
-                        <PathIcon Data="M2,8 L6,12 L14,3 M13,10 L13,14 L9,14" />
-                    </Button>
-
-                    <Border
-                        x:Name="ConnectionStatusBadge"
-                        Grid.Column="2"
-                        Width="28"
+                        Width="78"
                         Height="28"
-                        Background="#223040"
-                        BorderBrush="#3E5164"
-                        BorderThickness="1"
-                        CornerRadius="9"
-                        ToolTipService.ToolTip="Service status">
-                        <Border
-                            x:Name="ConnectionDot"
-                            Width="8"
-                            Height="8"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Background="#FF6B7280"
-                            CornerRadius="4" />
-                    </Border>
+                        SelectedIndex="0"
+                        SelectionChanged="OnLanguageSelectionChanged"
+                        ToolTipService.ToolTip="Language">
+                        <ComboBoxItem Tag="en-US">EN</ComboBoxItem>
+                        <ComboBoxItem Tag="zh-CN">中文</ComboBoxItem>
+                    </ComboBox>
 
                     <Border
-                        Grid.Column="4"
+                        Grid.Column="2"
                         Padding="8,0"
                         Height="28"
                         VerticalAlignment="Center"
@@ -158,6 +144,107 @@
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button
+                        x:Name="StartServiceButton"
+                        Grid.Column="0"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnStartServiceClick"
+                        ToolTipService.ToolTip="Start service">
+                        <PathIcon Data="M7,1 L9,1 L9,8 L7,8 Z M4.2,3.4 A5,5 0 1 0 11.8,3.4 L10.4,4.8 A3,3 0 1 1 5.6,4.8 Z" />
+                    </Button>
+
+                    <Button
+                        x:Name="CheckServiceButton"
+                        Grid.Column="1"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnCheckServerClick"
+                        ToolTipService.ToolTip="Check service">
+                        <PathIcon Data="M2,8 L6,12 L14,3 M13,10 L13,14 L9,14" />
+                    </Button>
+
+                    <Border
+                        x:Name="ConnectionStatusBadge"
+                        Grid.Column="2"
+                        Width="46"
+                        Height="28"
+                        Background="#223040"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        ToolTipService.ToolTip="Service status">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="5">
+                            <Border
+                                x:Name="ConnectionDot"
+                                Width="8"
+                                Height="8"
+                                Background="#FF6B7280"
+                                CornerRadius="4" />
+                            <TextBlock
+                                x:Name="ServiceBadgeText"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="#FFBFD0E3"
+                                Text="SVC" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border
+                        x:Name="CfgStatusBadge"
+                        Grid.Column="3"
+                        Width="46"
+                        Height="28"
+                        Background="#223040"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        ToolTipService.ToolTip="CFG status">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="5">
+                            <Border
+                                x:Name="CfgDot"
+                                Width="8"
+                                Height="8"
+                                Background="#FF6B7280"
+                                CornerRadius="4" />
+                            <TextBlock
+                                x:Name="CfgBadgeText"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="#FFBFD0E3"
+                                Text="CFG" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock
+                        x:Name="ReadinessText"
+                        Grid.Column="5"
+                        VerticalAlignment="Center"
+                        FontSize="10"
+                        FontWeight="SemiBold"
+                        Foreground="#FFFBBF24"
+                        Text="Need both green lights before playing"
+                        TextTrimming="CharacterEllipsis" />
+                </Grid>
+
+                <Grid
+                    Grid.Row="2"
+                    ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
@@ -169,6 +256,7 @@
                         BorderThickness="1"
                         CornerRadius="9">
                         <TextBlock
+                            x:Name="VoiceLabelText"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             FontSize="10"
@@ -192,12 +280,12 @@
                 </Grid>
 
                 <Grid
-                    Grid.Row="2"
+                    Grid.Row="3"
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
@@ -209,6 +297,78 @@
                         BorderThickness="1"
                         CornerRadius="9">
                         <TextBlock
+                            x:Name="CfgLabelText"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="#FFBFD0E3"
+                            Text="CFG" />
+                    </Border>
+
+                    <Button
+                        x:Name="SelectCsFolderButton"
+                        Grid.Column="1"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnSelectCsFolderClick"
+                        ToolTipService.ToolTip="Select CS2 root folder">
+                        <PathIcon Data="M2,4 L6,4 L7.2,6 L14,6 L14,13 L2,13 Z" />
+                    </Button>
+
+                    <StackPanel
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Spacing="1">
+                        <TextBlock
+                            x:Name="CfgStatusText"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="#FFBFD0E3"
+                            Text="CFG not checked"
+                            TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            x:Name="CfgHintText"
+                            FontSize="9"
+                            Foreground="#FF93A4B8"
+                            Text="Pick CS2 root folder"
+                            TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <Button
+                        x:Name="CfgInstallButton"
+                        Grid.Column="3"
+                        MinWidth="42"
+                        Height="28"
+                        Padding="8,0"
+                        Background="#24303D"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        Click="OnInstallCfgClick"
+                        Content="Add"
+                        CornerRadius="9"
+                        Foreground="#FFF8FAFC"
+                        ToolTipService.ToolTip="Add missing CFG"
+                        Visibility="Collapsed" />
+                </Grid>
+
+                <Grid
+                    Grid.Row="4"
+                    ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Width="50"
+                        Height="28"
+                        Background="#1E2833"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9">
+                        <TextBlock
+                            x:Name="TestLabelText"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             FontSize="10"
@@ -244,6 +404,7 @@
                     </ComboBox>
 
                     <Button
+                        x:Name="PreviewButton"
                         Grid.Column="2"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnPreviewClick"
@@ -251,24 +412,17 @@
                         <PathIcon Data="M4,2 L13,8 L4,14 Z" />
                     </Button>
 
-                    <Button
-                        Grid.Column="3"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
-                        Click="OnTestEventClick"
-                        ToolTipService.ToolTip="Send selected test event">
-                        <PathIcon Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z M11,5 L13,7 L13,9 L11,11 Z" />
-                    </Button>
                 </Grid>
 
                 <Grid
-                    Grid.Row="3"
+                    Grid.Row="5"
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -283,6 +437,7 @@
                         BorderThickness="1"
                         CornerRadius="9">
                         <TextBlock
+                            x:Name="ViewLabelText"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             FontSize="10"
@@ -292,6 +447,7 @@
                     </Border>
 
                     <Button
+                        x:Name="DefaultSizeButton"
                         Grid.Column="1"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnResizeClick"
@@ -300,6 +456,7 @@
                     </Button>
 
                     <Button
+                        x:Name="CenterButton"
                         Grid.Column="2"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnCenterClick"
@@ -308,6 +465,7 @@
                     </Button>
 
                     <Button
+                        x:Name="LowerThirdButton"
                         Grid.Column="3"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnLowerThirdClick"
@@ -316,7 +474,8 @@
                     </Button>
 
                     <Button
-                        Grid.Column="5"
+                        x:Name="MoveUpButton"
+                        Grid.Column="4"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnMoveUpClick"
                         ToolTipService.ToolTip="Move icon up">
@@ -324,16 +483,35 @@
                     </Button>
 
                     <Button
-                        Grid.Column="6"
+                        x:Name="MoveDownButton"
+                        Grid.Column="5"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnMoveDownClick"
                         ToolTipService.ToolTip="Move icon down">
                         <PathIcon Data="M6,1 L10,1 L10,6 L14,6 L8,14 L2,6 L6,6 Z" />
                     </Button>
+
+                    <Button
+                        x:Name="ScaleDownButton"
+                        Grid.Column="6"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnScaleDownClick"
+                        ToolTipService.ToolTip="Shrink icon">
+                        <PathIcon Data="M3,7 L13,7 L13,9 L3,9 Z" />
+                    </Button>
+
+                    <Button
+                        x:Name="ScaleUpButton"
+                        Grid.Column="7"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnScaleUpClick"
+                        ToolTipService.ToolTip="Enlarge icon">
+                        <PathIcon Data="M7,3 L9,3 L9,7 L13,7 L13,9 L9,9 L9,13 L7,13 L7,9 L3,9 L3,7 L7,7 Z" />
+                    </Button>
                 </Grid>
 
                 <Grid
-                    Grid.Row="4"
+                    Grid.Row="6"
                     ColumnSpacing="6"
                     VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
@@ -344,13 +522,14 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <Button
+                    <PathIcon
+                        x:Name="BrightnessIcon"
                         Grid.Column="0"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
-                        Click="OnScaleDownClick"
-                        ToolTipService.ToolTip="Shrink icon">
-                        <PathIcon Data="M3,7 L13,7 L13,9 L3,9 Z" />
-                    </Button>
+                        Width="18"
+                        Height="18"
+                        Foreground="#FFFFE7A3"
+                        Data="M8,1 L10,5 L14,6 L11,9 L12,14 L8,12 L4,14 L5,9 L2,6 L6,5 Z"
+                        ToolTipService.ToolTip="Animation brightness" />
 
                     <Slider
                         x:Name="BrightnessSlider"
@@ -362,13 +541,14 @@
                         ValueChanged="OnBrightnessValueChanged"
                         ToolTipService.ToolTip="Animation brightness" />
 
-                    <Button
+                    <PathIcon
+                        x:Name="ContrastIcon"
                         Grid.Column="2"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
-                        Click="OnScaleUpClick"
-                        ToolTipService.ToolTip="Enlarge icon">
-                        <PathIcon Data="M7,3 L9,3 L9,7 L13,7 L13,9 L9,9 L9,13 L7,13 L7,9 L3,9 L3,7 L7,7 Z" />
-                    </Button>
+                        Width="18"
+                        Height="18"
+                        Foreground="#FFE5E7EB"
+                        Data="M2,2 L14,2 L14,14 L2,14 Z M8,2 L14,2 L14,14 L8,14 Z"
+                        ToolTipService.ToolTip="Animation contrast" />
 
                     <Slider
                         x:Name="ContrastSlider"
@@ -381,6 +561,7 @@
                         ToolTipService.ToolTip="Animation contrast" />
 
                     <Button
+                        x:Name="ResetVisualButton"
                         Grid.Column="4"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnResetVisualAdjustmentsClick"

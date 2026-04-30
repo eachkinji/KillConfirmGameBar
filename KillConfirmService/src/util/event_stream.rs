@@ -1,4 +1,9 @@
-use std::sync::Arc;
+use std::{
+    fs,
+    path::PathBuf,
+    process::Command,
+    sync::Arc,
+};
 
 use axum::{
     extract::{
@@ -48,6 +53,12 @@ pub struct SoundPackResponse {
     pub available: Vec<SoundPackOption>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct Cs2RootResponse {
+    pub found: bool,
+    pub path: Option<String>,
+}
+
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct SoundPackOption {
     pub preset: &'static str,
@@ -70,6 +81,22 @@ const SOUND_PACK_OPTIONS: &[SoundPackOption] = &[
 ];
 
 pub async fn health() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        ok: true,
+        service: "kill-confirm-gamebar",
+    })
+}
+
+pub async fn cs2_root() -> Json<Cs2RootResponse> {
+    let path = detect_cs2_root();
+    Json(Cs2RootResponse {
+        found: path.is_some(),
+        path: path.map(|value| value.display().to_string()),
+    })
+}
+
+pub async fn shutdown(State(app_state): State<Arc<AppState>>) -> Json<HealthResponse> {
+    let _ = app_state.shutdown_tx.send(());
     Json(HealthResponse {
         ok: true,
         service: "kill-confirm-gamebar",
@@ -174,6 +201,132 @@ fn soundpack_display_name(preset_name: &str) -> &'static str {
         .find(|option| option.preset == preset_name)
         .map(|option| option.display_name)
         .unwrap_or("custom")
+}
+
+fn detect_cs2_root() -> Option<PathBuf> {
+    for library_root in steam_library_roots() {
+        let cs2_root = library_root
+            .join("steamapps")
+            .join("common")
+            .join("Counter-Strike Global Offensive");
+        if cs2_root.join("game").join("csgo").join("cfg").is_dir() {
+            return Some(cs2_root);
+        }
+    }
+
+    None
+}
+
+fn steam_library_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    for root in steam_roots() {
+        push_unique_path(&mut roots, root.clone());
+
+        let library_folders = root.join("steamapps").join("libraryfolders.vdf");
+        if let Ok(text) = fs::read_to_string(library_folders) {
+            for path in parse_steam_library_paths(&text) {
+                push_unique_path(&mut roots, path);
+            }
+        }
+    }
+
+    roots
+}
+
+fn steam_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    for value_name in ["SteamPath", "InstallPath"] {
+        for key in [
+            r"HKCU\Software\Valve\Steam",
+            r"HKLM\Software\WOW6432Node\Valve\Steam",
+            r"HKLM\Software\Valve\Steam",
+        ] {
+            if let Some(path) = query_registry_string(key, value_name) {
+                push_unique_path(&mut roots, PathBuf::from(path.replace('/', "\\")));
+            }
+        }
+    }
+
+    if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
+        push_unique_path(&mut roots, PathBuf::from(program_files_x86).join("Steam"));
+    }
+
+    roots
+}
+
+fn query_registry_string(key: &str, value_name: &str) -> Option<String> {
+    let output = Command::new("reg")
+        .args(["query", key, "/v", value_name])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if !trimmed.starts_with(value_name) {
+            continue;
+        }
+
+        if let Some(index) = trimmed.find("REG_SZ") {
+            let value = trimmed[index + "REG_SZ".len()..].trim();
+            if !value.is_empty() {
+                return Some(value.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+fn parse_steam_library_paths(text: &str) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if !(trimmed.starts_with("\"path\"") || starts_with_quoted_number(trimmed)) {
+            continue;
+        }
+
+        let quoted: Vec<&str> = trimmed.split('"').collect();
+        if quoted.len() >= 4 {
+            let value = quoted[3].replace("\\\\", "\\");
+            if !value.is_empty() {
+                paths.push(PathBuf::from(value));
+            }
+        }
+    }
+
+    paths
+}
+
+fn starts_with_quoted_number(value: &str) -> bool {
+    let Some(rest) = value.strip_prefix('"') else {
+        return false;
+    };
+    let Some((number, _)) = rest.split_once('"') else {
+        return false;
+    };
+    !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit())
+}
+
+fn push_unique_path(paths: &mut Vec<PathBuf>, path: PathBuf) {
+    if !path.exists() {
+        return;
+    }
+
+    let normalized = path.to_string_lossy();
+    if !paths
+        .iter()
+        .any(|existing| existing.to_string_lossy().eq_ignore_ascii_case(&normalized))
+    {
+        paths.push(path);
+    }
 }
 
 async fn send_events(mut socket: WebSocket, mut rx: broadcast::Receiver<KillEvent>) {

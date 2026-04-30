@@ -98,6 +98,8 @@ function Install-OverlayPackage {
         throw "OverlayPackage was not found under $ScriptRoot"
     }
 
+    Get-Process cskillconfirm,TestXboxGameBar -ErrorAction SilentlyContinue | Stop-Process -Force
+
     $msix = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.msix" -File | Select-Object -First 1
     if (-not $msix) {
         throw "MSIX package was not found under $OverlayRoot"
@@ -128,17 +130,13 @@ function Install-OverlayPackage {
     }
 }
 
-try {
-    if (Test-Path $LogPath) {
-        Remove-Item -LiteralPath $LogPath -Force
+function Test-OverlayPackageInstalled {
+    $package = Get-AppxPackage -Name "KillConfirmGameBar.Overlay" -ErrorAction SilentlyContinue
+    if (-not $package) {
+        throw "MSIX install finished, but KillConfirmGameBar.Overlay is not registered for this user."
     }
 
-    Install-OverlayPackage
-}
-catch {
-    Write-InstallLog "Install failed: $($_.Exception.Message)"
-    Write-InstallLog "Log: $LogPath"
-    throw
+    Write-InstallLog "MSIX package registered: $($package.PackageFamilyName)"
 }
 
 function Get-SteamLibraryRoots {
@@ -210,26 +208,26 @@ function Get-SteamLibraryRoots {
 }
 
 function Install-Cs2GsiConfig {
-    $configText = @"
-"KillConfirmGameBar"
-{
- "uri" "http://127.0.0.1:3000/"
- "timeout" "5.0"
- "buffer"  "0.1"
- "throttle" "0.1"
- "heartbeat" "30.0"
- "data"
- {
-   "provider"           "1"
-   "map"                "1"
-   "round"              "1"
-   "player_id"          "1"
-   "player_state"       "1"
-   "player_weapons"     "1"
-   "player_match_stats" "1"
- }
-}
-"@
+    $configLines = @(
+        '"KillConfirmGameBar"',
+        '{',
+        ' "uri" "http://127.0.0.1:3000/"',
+        ' "timeout" "5.0"',
+        ' "buffer"  "0.1"',
+        ' "throttle" "0.1"',
+        ' "heartbeat" "30.0"',
+        ' "data"',
+        ' {',
+        '   "provider"           "1"',
+        '   "map"                "1"',
+        '   "round"              "1"',
+        '   "player_id"          "1"',
+        '   "player_state"       "1"',
+        '   "player_weapons"     "1"',
+        '   "player_match_stats" "1"',
+        ' }',
+        '}'
+    )
 
     $installed = $false
     foreach ($libraryRoot in Get-SteamLibraryRoots) {
@@ -239,37 +237,56 @@ function Install-Cs2GsiConfig {
         }
 
         $cfgPath = Join-Path $cfgRoot "gamestate_integration_killconfirm.cfg"
-        Set-Content -LiteralPath $cfgPath -Value $configText -Encoding ASCII
+        Set-Content -LiteralPath $cfgPath -Value $configLines -Encoding ASCII
         Write-Host "CS2 GSI config installed: $cfgPath"
         $installed = $true
     }
 
     if (-not $installed) {
-        Write-Warning "CS2 cfg folder was not found. Install gamestate_integration_killconfirm.cfg manually if kill events do not trigger."
+        Write-Warning "CS2 cfg folder was not found. If kill events do not trigger, install gamestate_integration_killconfirm.cfg manually."
     }
 }
 
-if (-not $SkipGsiConfig) {
-    Install-Cs2GsiConfig
-}
-
-if (-not $SkipLoopback) {
-    & CheckNetIsolation LoopbackExempt -a -n=$PackageFamilyName
-}
-
-if ($OpenGameBar) {
-    Start-Sleep -Milliseconds 800
-    try {
-        Start-Process "ms-gamebar:" | Out-Null
+try {
+    if (Test-Path $LogPath) {
+        Remove-Item -LiteralPath $LogPath -Force
     }
-    catch {
-    }
-}
 
-Write-Host ""
-Write-Host "Kill Confirm installed."
-Write-Host "Press Win+G and launch Kill Confirm Overlay."
-Write-Host "The packaged background service starts from inside the app."
+    Install-OverlayPackage
+    Test-OverlayPackageInstalled
+
+    if (-not $SkipGsiConfig) {
+        Install-Cs2GsiConfig
+    }
+
+    if (-not $SkipLoopback) {
+        Write-InstallLog "Adding loopback exemption for $PackageFamilyName..."
+        & CheckNetIsolation.exe LoopbackExempt -a "-n=$PackageFamilyName"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to add loopback exemption for $PackageFamilyName"
+        }
+    }
+
+    if ($OpenGameBar) {
+        Start-Sleep -Milliseconds 800
+        try {
+            Start-Process "ms-gamebar:" | Out-Null
+        }
+        catch {
+        }
+    }
+
+    Write-InstallLog "Kill Confirm installed."
+    Write-Host ""
+    Write-Host "Kill Confirm installed."
+    Write-Host "Press Win+G and launch Kill Confirm Overlay."
+    Write-Host "The packaged background service starts from inside the app."
+}
+catch {
+    Write-InstallLog "Install failed: $($_.Exception.Message)"
+    Write-InstallLog "Log: $LogPath"
+    throw
+}
 '@
 
 $Readme = @'
@@ -290,10 +307,17 @@ Notes:
 - The widget starts its packaged companion service directly from the installed app.
 - The install script installs the MSIX package directly instead of requiring Visual Studio developer scripts.
 - The install script tries to create CS2's gamestate_integration_killconfirm.cfg automatically.
-- The widget still talks to 127.0.0.1 internally, so the install script adds the required loopback exemption.
+- The widget talks to 127.0.0.1 internally, so the install script adds the required loopback exemption.
 - If Xbox Game Bar was open during install, close it and open it again.
 - The installer does not auto-open the widget URI because some Windows installs do not register ms-gamebarwidget links.
 - Package family name for loopback: KillConfirmGameBar.Overlay_5jgcw66eyez0m
+
+KillConfirmGameBar transfer package - Chinese quick guide
+
+1. Right-click Install-KillConfirm.ps1 and choose Run with PowerShell.
+2. Press Win+G.
+3. Open Kill Confirm Overlay in Xbox Game Bar.
+4. If the status is not green, use the panel Check button and the CFG check area.
 '@
 
 Set-Content -LiteralPath (Join-Path $TransferRoot "Install-KillConfirm.ps1") -Value $InstallScript -Encoding UTF8

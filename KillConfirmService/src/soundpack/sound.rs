@@ -7,6 +7,7 @@ use tokio::task::JoinSet;
 use tracing::{error, info};
 
 use crate::soundpack::SoundContext;
+use crate::util::logging::service_log;
 use crate::util::state::AppState;
 
 const KNIFE_SOUND_GAIN: f32 = 0.16;
@@ -15,6 +16,7 @@ const HEADSHOT_SOUND_GAIN: f32 = 1.8;
 const MAX_STREAK_EVENT_GAIN: f32 = 1.35;
 
 async fn add_file_to_mixer(file_name: &str, mixer: &mixer::Mixer, event_gain: f32) -> Result<()> {
+    service_log(&format!("audio opening file: {file_name}"));
     let file = TokioFile::open(file_name)
         .await
         .with_context(|| format!("failed to open file: {file_name}"))?;
@@ -22,6 +24,7 @@ async fn add_file_to_mixer(file_name: &str, mixer: &mixer::Mixer, event_gain: f3
     let source = rodio::Decoder::new(BufReader::new(sync_file))
         .with_context(|| format!("failed to decode file: {file_name:?}"))?;
     mixer.add(source.amplify(resolve_sound_gain(file_name, event_gain)));
+    service_log(&format!("audio queued file: {file_name}"));
     Ok(())
 }
 
@@ -37,6 +40,10 @@ pub async fn play_audio(
     let args = &app_state_clone.args;
     let stream_handle = &app_state_clone.stream_handle;
     let volume = args.volume;
+
+    service_log(&format!(
+        "audio request: kills={kill_count}, headshot={is_headshot}, knife={is_knife_kill}, first={is_first_kill}, last={is_last_kill}, main={play_main_audio}, volume={volume}"
+    ));
 
     let mixer = stream_handle.mixer().to_owned();
 
@@ -68,6 +75,16 @@ pub async fn play_audio(
         sound_files.len(),
         sound_files
     );
+    service_log(&format!(
+        "audio lua returned {} files: {:?}",
+        sound_files.len(),
+        sound_files
+    ));
+
+    if sound_files.is_empty() {
+        service_log("audio skipped: no sound files for this event");
+        return Ok(());
+    }
 
     let event_gain = resolve_event_gain(kill_count, play_main_audio);
 
@@ -87,11 +104,22 @@ pub async fn play_audio(
 
     let results = tasks.join_all().await;
 
+    let mut first_error = None;
     results.iter().for_each(|result| {
         if let Err(e) = result {
+            service_log(&format!("audio failed to add file to mixer: {e}"));
             error!("Failed to add file to mixer: {}", e);
+            if first_error.is_none() {
+                first_error = Some(e.to_string());
+            }
         }
     });
+
+    if let Some(error) = first_error {
+        anyhow::bail!(error);
+    }
+
+    service_log("audio request queued successfully");
 
     Ok(())
 }

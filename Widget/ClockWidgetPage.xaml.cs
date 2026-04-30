@@ -7,9 +7,12 @@ using TestXboxGameBar.Services;
 using Windows.ApplicationModel;
 using Windows.Data.Json;
 using Windows.Foundation;
+using Windows.Storage.AccessCache;
+using Windows.Storage.Pickers;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI;
+using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -42,10 +45,35 @@ namespace TestXboxGameBar
         private const string BrightnessSettingKey = "AnimationBrightness";
         private const string ContrastSettingKey = "AnimationContrast";
         private const string VoicePackSettingKey = "VoicePack";
+        private const string CsInstallFolderAccessToken = "CsInstallFolder";
+        private const string CsInstallFolderTokenSettingKey = "CsInstallFolderToken";
+        private const string CsInstallFolderPathSettingKey = "CsInstallFolderPath";
+        private const string GsiConfigFileName = "gamestate_integration_killconfirm.cfg";
+        private const string GsiConfigText =
+            "\"KillConfirmGameBar\"\r\n" +
+            "{\r\n" +
+            " \"uri\" \"http://127.0.0.1:3000/\"\r\n" +
+            " \"timeout\" \"5.0\"\r\n" +
+            " \"buffer\"  \"0.1\"\r\n" +
+            " \"throttle\" \"0.1\"\r\n" +
+            " \"heartbeat\" \"30.0\"\r\n" +
+            " \"data\"\r\n" +
+            " {\r\n" +
+            "   \"provider\"           \"1\"\r\n" +
+            "   \"map\"                \"1\"\r\n" +
+            "   \"round\"              \"1\"\r\n" +
+            "   \"player_id\"          \"1\"\r\n" +
+            "   \"player_state\"       \"1\"\r\n" +
+            "   \"player_weapons\"     \"1\"\r\n" +
+            "   \"player_match_stats\" \"1\"\r\n" +
+            " }\r\n" +
+            "}\r\n";
         private const int ControlPanelStateRefreshMs = 250;
         private const string PackagedServiceParameterGroupId = "CrossfirePreset";
         private static readonly Uri ServiceHealthUri = new Uri("http://127.0.0.1:3000/health");
+        private static readonly Uri ServiceShutdownUri = new Uri("http://127.0.0.1:3000/shutdown");
         private static readonly Uri SoundPackUri = new Uri("http://127.0.0.1:3000/soundpack");
+        private static readonly Uri Cs2RootUri = new Uri("http://127.0.0.1:3000/cs2-root");
         private static readonly TimeSpan ServiceStartupTimeout = TimeSpan.FromSeconds(6);
         private static readonly TimeSpan ServiceStartupPollInterval = TimeSpan.FromMilliseconds(250);
         private static readonly SemaphoreSlim ServiceStartupGate = new SemaphoreSlim(1, 1);
@@ -81,7 +109,12 @@ namespace TestXboxGameBar
         private XboxGameBarWidgetWindowState _windowState = XboxGameBarWidgetWindowState.Restored;
         private bool _suppressVisualAdjustmentEvents;
         private bool _suppressVoicePackEvents;
+        private bool _suppressLanguageEvents = true;
         private bool _isPageActive;
+        private StorageFolder _csInstallFolder;
+        private CfgDetectionState _cfgDetectionState = CfgDetectionState.NotSelected;
+        private string _cfgStatusDetail = string.Empty;
+        private KillEventConnectionState _serviceConnectionState = KillEventConnectionState.Disconnected;
         private readonly DispatcherTimer _controlPanelStateTimer;
         private readonly DispatcherTimer _streakBadgeTimer;
 
@@ -90,6 +123,8 @@ namespace TestXboxGameBar
             InitializeComponent();
             AnimationLayer.SizeChanged += OnAnimationLayerSizeChanged;
             VersionText.Text = GetDisplayVersion();
+            LoadLanguageSelector();
+            ApplyLanguage();
 
             _controlPanelStateTimer = new DispatcherTimer
             {
@@ -123,6 +158,7 @@ namespace TestXboxGameBar
             StartKillEventClient();
             ConfigureWidgetCapabilities();
             _ = EnsureServiceAvailableAsync();
+            _ = LoadSavedCsFolderAsync();
             _ = WarmStartupAnimationCacheAsync();
             _ = WarmExtendedAnimationCacheAsync();
             UpdateControlPanelVisibility();
@@ -143,6 +179,7 @@ namespace TestXboxGameBar
             _streakBadgeTimer.Stop();
             _widget = null;
             HideStreakBadge();
+            _ = RequestServiceShutdownAsync();
 
             if (_eventClient != null)
             {
@@ -222,7 +259,7 @@ namespace TestXboxGameBar
             ScaleAnimation(ScaleDownFactor);
         }
 
-        private void OnPreviewClick(object sender, RoutedEventArgs e)
+        private async void OnPreviewClick(object sender, RoutedEventArgs e)
         {
             TestPreset preset = GetSelectedTestPreset();
             if (preset == null)
@@ -232,17 +269,6 @@ namespace TestXboxGameBar
                     KillCount = DefaultPreviewKillCount,
                     PlayMainAnimation = true
                 });
-                return;
-            }
-
-            HandleKillEvent(preset.ToKillEvent());
-        }
-
-        private async void OnTestEventClick(object sender, RoutedEventArgs e)
-        {
-            TestPreset preset = GetSelectedTestPreset();
-            if (preset == null)
-            {
                 return;
             }
 
@@ -257,6 +283,78 @@ namespace TestXboxGameBar
         private async void OnStartServiceClick(object sender, RoutedEventArgs e)
         {
             await EnsureServiceAvailableAsync();
+        }
+
+        private void OnLanguageSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressLanguageEvents)
+            {
+                return;
+            }
+
+            string tag = null;
+            if (LanguageSelector.SelectedItem is ComboBoxItem item)
+            {
+                tag = item.Tag as string;
+            }
+
+            LocalizationManager.SetLanguage(string.Equals(tag, "zh-CN", StringComparison.OrdinalIgnoreCase)
+                ? UiLanguage.SimplifiedChinese
+                : UiLanguage.English);
+            ApplyLanguage();
+        }
+
+        private async void OnSelectCsFolderClick(object sender, RoutedEventArgs e)
+        {
+            var picker = new FolderPicker
+            {
+                SuggestedStartLocation = PickerLocationId.ComputerFolder,
+                ViewMode = PickerViewMode.List
+            };
+            picker.FileTypeFilter.Add("*");
+
+            StorageFolder folder = await picker.PickSingleFolderAsync();
+            if (folder == null)
+            {
+                return;
+            }
+
+            try
+            {
+                SaveCsFolder(folder);
+                await RefreshCfgStatusAsync();
+            }
+            catch (Exception ex)
+            {
+                App.Log("Failed to save selected CS folder: " + ex);
+                UpdateCfgStatus(CfgDetectionState.Error, LocalizationManager.Text("CfgFolderError"), LocalizationManager.Text("CfgFolderSaveError"));
+            }
+        }
+
+        private async void OnInstallCfgClick(object sender, RoutedEventArgs e)
+        {
+            if (_csInstallFolder == null)
+            {
+                await ShowCfgMessageAsync(LocalizationManager.Text("SelectCsFirst"));
+                return;
+            }
+
+            var dialog = new MessageDialog(
+                LocalizationManager.Text("AddCfgQuestion"),
+                LocalizationManager.Text("AddCfgTitle"));
+            string addText = LocalizationManager.Text("Add");
+            dialog.Commands.Add(new UICommand(addText));
+            dialog.Commands.Add(new UICommand(LocalizationManager.Text("Cancel")));
+            dialog.DefaultCommandIndex = 0;
+            dialog.CancelCommandIndex = 1;
+
+            IUICommand result = await dialog.ShowAsync();
+            if (result.Label != addText)
+            {
+                return;
+            }
+
+            await InstallCfgAsync();
         }
 
         private void OnWidgetVisibleChanged(XboxGameBarWidget sender, object args)
@@ -288,6 +386,255 @@ namespace TestXboxGameBar
         private void OnConnectionStateChanged(object sender, KillEventConnectionState state)
         {
             UpdateConnectionState(state);
+        }
+
+        private async Task LoadSavedCsFolderAsync()
+        {
+            string token = ApplicationData.Current.LocalSettings.Values[CsInstallFolderTokenSettingKey] as string;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
+                await TryAutoDetectCsFolderAsync();
+                return;
+            }
+
+            try
+            {
+                _csInstallFolder = await StorageApplicationPermissions.FutureAccessList.GetFolderAsync(token);
+                await RefreshCfgStatusAsync();
+            }
+            catch (Exception ex)
+            {
+                App.Log("Failed to restore CS folder access: " + ex);
+                _csInstallFolder = null;
+                UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
+                await TryAutoDetectCsFolderAsync();
+            }
+        }
+
+        private async Task TryAutoDetectCsFolderAsync()
+        {
+            if (_csInstallFolder != null)
+            {
+                return;
+            }
+
+            UpdateCfgStatus(CfgDetectionState.Checking, LocalizationManager.Text("CfgAutoDetecting"), LocalizationManager.Text("CfgSelectRootHint"));
+
+            try
+            {
+                await EnsureServiceAvailableAsync();
+
+                using (var client = new HttpClient())
+                using (HttpResponseMessage response = await client.GetAsync(Cs2RootUri))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
+                        return;
+                    }
+
+                    string responseText = await response.Content.ReadAsStringAsync();
+                    JsonObject json = JsonObject.Parse(responseText);
+                    bool found = json.GetNamedBoolean("found", false);
+                    string path = json.GetNamedString("path", string.Empty);
+
+                    if (!found || string.IsNullOrWhiteSpace(path))
+                    {
+                        UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
+                        return;
+                    }
+
+                    try
+                    {
+                        StorageFolder folder = await StorageFolder.GetFolderFromPathAsync(path);
+                        SaveCsFolder(folder);
+                        await RefreshCfgStatusAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Log("Auto-detected CS folder, but folder access failed: " + ex);
+                        ApplicationData.Current.LocalSettings.Values[CsInstallFolderPathSettingKey] = path;
+                        UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgDetectedNeedConfirm") + path);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Log("Failed to auto-detect CS folder: " + ex);
+                UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
+            }
+        }
+
+        private void SaveCsFolder(StorageFolder folder)
+        {
+            StorageApplicationPermissions.FutureAccessList.AddOrReplace(CsInstallFolderAccessToken, folder);
+            ApplicationData.Current.LocalSettings.Values[CsInstallFolderTokenSettingKey] = CsInstallFolderAccessToken;
+            ApplicationData.Current.LocalSettings.Values[CsInstallFolderPathSettingKey] = folder.Path;
+            _csInstallFolder = folder;
+        }
+
+        private async Task RefreshCfgStatusAsync()
+        {
+            if (_csInstallFolder == null)
+            {
+                UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
+                return;
+            }
+
+            UpdateCfgStatus(CfgDetectionState.Checking, null, GetCsFolderDisplayText());
+
+            StorageFolder cfgFolder = await TryGetCfgFolderAsync(_csInstallFolder);
+            if (cfgFolder == null)
+            {
+                UpdateCfgStatus(CfgDetectionState.Error, null, LocalizationManager.Text("CfgWrongFolderHint"));
+                return;
+            }
+
+            try
+            {
+                await cfgFolder.GetFileAsync(GsiConfigFileName);
+                UpdateCfgStatus(CfgDetectionState.Ready, null, GetCsFolderDisplayText());
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+                UpdateCfgStatus(CfgDetectionState.Missing, null, GetCsFolderDisplayText());
+            }
+            catch (Exception ex)
+            {
+                App.Log("Failed to check cfg file: " + ex);
+                UpdateCfgStatus(CfgDetectionState.Error, null, GetCsFolderDisplayText());
+            }
+        }
+
+        private async Task InstallCfgAsync()
+        {
+            try
+            {
+                UpdateCfgStatus(CfgDetectionState.Checking, LocalizationManager.Text("CfgAdding"), GetCsFolderDisplayText());
+                StorageFolder cfgFolder = await GetOrCreateCfgFolderAsync(_csInstallFolder);
+                StorageFile cfgFile = await cfgFolder.CreateFileAsync(GsiConfigFileName, CreationCollisionOption.ReplaceExisting);
+                await FileIO.WriteTextAsync(cfgFile, GsiConfigText, UnicodeEncoding.Utf8);
+                UpdateCfgStatus(CfgDetectionState.Ready, null, GetCsFolderDisplayText());
+            }
+            catch (Exception ex)
+            {
+                App.Log("Failed to install cfg file: " + ex);
+                UpdateCfgStatus(CfgDetectionState.Error, LocalizationManager.Text("CfgAddFailed"), GetCsFolderDisplayText());
+                await ShowCfgMessageAsync(LocalizationManager.Text("CfgWriteFailed"));
+            }
+        }
+
+        private string GetCsFolderDisplayText()
+        {
+            string savedPath = ApplicationData.Current.LocalSettings.Values[CsInstallFolderPathSettingKey] as string;
+            if (!string.IsNullOrWhiteSpace(savedPath))
+            {
+                return savedPath;
+            }
+
+            return _csInstallFolder?.Path ?? _csInstallFolder?.Name ?? "Counter-Strike Global Offensive";
+        }
+
+        private static async Task<StorageFolder> TryGetCfgFolderAsync(StorageFolder root)
+        {
+            try
+            {
+                StorageFolder gameFolder = await root.GetFolderAsync("game");
+                StorageFolder csgoFolder = await gameFolder.GetFolderAsync("csgo");
+                return await csgoFolder.GetFolderAsync("cfg");
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static async Task<StorageFolder> GetOrCreateCfgFolderAsync(StorageFolder root)
+        {
+            StorageFolder gameFolder = await root.CreateFolderAsync("game", CreationCollisionOption.OpenIfExists);
+            StorageFolder csgoFolder = await gameFolder.CreateFolderAsync("csgo", CreationCollisionOption.OpenIfExists);
+            return await csgoFolder.CreateFolderAsync("cfg", CreationCollisionOption.OpenIfExists);
+        }
+
+        private async Task ShowCfgMessageAsync(string message)
+        {
+            try
+            {
+                await new MessageDialog(message, LocalizationManager.Text("CfgMessageTitle")).ShowAsync();
+            }
+            catch
+            {
+            }
+        }
+
+        private void LoadLanguageSelector()
+        {
+            _suppressLanguageEvents = true;
+            try
+            {
+                string target = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "zh-CN" : "en-US";
+                foreach (object option in LanguageSelector.Items)
+                {
+                    if (option is ComboBoxItem item
+                        && item.Tag is string tag
+                        && string.Equals(tag, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        LanguageSelector.SelectedItem = item;
+                        return;
+                    }
+                }
+
+                LanguageSelector.SelectedIndex = 0;
+            }
+            finally
+            {
+                _suppressLanguageEvents = false;
+            }
+        }
+
+        private void ApplyLanguage()
+        {
+            PinHintText.Text = LocalizationManager.Text("PinHint");
+            ToolTipService.SetToolTip(PinHintText, LocalizationManager.Text("PinHintTooltip"));
+            ToolTipService.SetToolTip(LanguageSelector, "Language / 语言");
+
+            ToolTipService.SetToolTip(StartServiceButton, LocalizationManager.Text("StartServiceTooltip"));
+            ToolTipService.SetToolTip(CheckServiceButton, LocalizationManager.Text("CheckServiceTooltip"));
+            ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTooltip"));
+            ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTooltip"));
+
+            ServiceBadgeText.Text = "SVC";
+            CfgBadgeText.Text = "CFG";
+            VoiceLabelText.Text = LocalizationManager.Text("VoiceLabel");
+            CfgLabelText.Text = LocalizationManager.Text("CfgLabel");
+            TestLabelText.Text = LocalizationManager.Text("TestLabel");
+            ViewLabelText.Text = LocalizationManager.Text("ViewLabel");
+
+            ToolTipService.SetToolTip(VoicePackSelector, LocalizationManager.Text("VoiceTooltip"));
+            ToolTipService.SetToolTip(SelectCsFolderButton, LocalizationManager.Text("SelectCsFolderTooltip"));
+            CfgInstallButton.Content = LocalizationManager.Text("Add");
+            ToolTipService.SetToolTip(CfgInstallButton, LocalizationManager.Text("AddMissingCfgTooltip"));
+
+            ToolTipService.SetToolTip(TestPresetSelector, LocalizationManager.Text("TestPresetTooltip"));
+            ToolTipService.SetToolTip(PreviewButton, LocalizationManager.Text("PreviewTooltip"));
+
+            ToolTipService.SetToolTip(DefaultSizeButton, LocalizationManager.Text("DefaultSizeTooltip"));
+            ToolTipService.SetToolTip(CenterButton, LocalizationManager.Text("CenterWindowTooltip"));
+            ToolTipService.SetToolTip(LowerThirdButton, LocalizationManager.Text("LowerThirdTooltip"));
+            ToolTipService.SetToolTip(MoveUpButton, LocalizationManager.Text("MoveUpTooltip"));
+            ToolTipService.SetToolTip(MoveDownButton, LocalizationManager.Text("MoveDownTooltip"));
+            ToolTipService.SetToolTip(ScaleDownButton, LocalizationManager.Text("ShrinkTooltip"));
+            ToolTipService.SetToolTip(ScaleUpButton, LocalizationManager.Text("EnlargeTooltip"));
+
+            ToolTipService.SetToolTip(BrightnessIcon, LocalizationManager.Text("BrightnessTooltip"));
+            ToolTipService.SetToolTip(BrightnessSlider, LocalizationManager.Text("BrightnessTooltip"));
+            ToolTipService.SetToolTip(ContrastIcon, LocalizationManager.Text("ContrastTooltip"));
+            ToolTipService.SetToolTip(ContrastSlider, LocalizationManager.Text("ContrastTooltip"));
+            ToolTipService.SetToolTip(ResetVisualButton, LocalizationManager.Text("ResetTooltip"));
+
+            UpdateConnectionState(_serviceConnectionState);
+            UpdateCfgStatus(_cfgDetectionState, null, _cfgStatusDetail);
         }
 
         private void ConfigureWidgetCapabilities()
@@ -465,6 +812,22 @@ namespace TestXboxGameBar
             catch (Exception)
             {
                 return false;
+            }
+        }
+
+        private static async Task RequestServiceShutdownAsync()
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                using (var content = new HttpStringContent(string.Empty, UnicodeEncoding.Utf8, "text/plain"))
+                {
+                    await client.PostAsync(ServiceShutdownUri, content);
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Log("Service shutdown request failed: " + ex.Message);
             }
         }
 
@@ -848,21 +1211,117 @@ namespace TestXboxGameBar
 
         private void UpdateConnectionState(KillEventConnectionState state)
         {
+            _serviceConnectionState = state;
+
             switch (state)
             {
                 case KillEventConnectionState.Connected:
                     ConnectionDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
-                    ToolTipService.SetToolTip(ConnectionStatusBadge, "Service running");
+                    ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceRunning"));
                     break;
                 case KillEventConnectionState.Connecting:
                     ConnectionDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
-                    ToolTipService.SetToolTip(ConnectionStatusBadge, "Service starting");
+                    ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStarting"));
                     break;
                 default:
                     ConnectionDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
-                    ToolTipService.SetToolTip(ConnectionStatusBadge, "Service offline");
+                    ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceOffline"));
                     break;
             }
+
+            UpdateReadinessText();
+        }
+
+        private void UpdateCfgStatus(CfgDetectionState state, string label, string detail)
+        {
+            _cfgDetectionState = state;
+            _cfgStatusDetail = detail ?? string.Empty;
+            CfgStatusText.Text = string.IsNullOrWhiteSpace(label) ? ResolveCfgStatusLabel(state) : label;
+            CfgHintText.Text = ResolveCfgHintText(state, _cfgStatusDetail);
+            CfgInstallButton.Visibility = state == CfgDetectionState.Missing
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            switch (state)
+            {
+                case CfgDetectionState.Ready:
+                    CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
+                    ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgReadyTooltip") + _cfgStatusDetail);
+                    break;
+                case CfgDetectionState.Checking:
+                    CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
+                    ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CheckingCfgTooltip"));
+                    break;
+                case CfgDetectionState.Missing:
+                    CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
+                    ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgMissingTooltip") + _cfgStatusDetail);
+                    break;
+                case CfgDetectionState.Error:
+                    CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
+                    ToolTipService.SetToolTip(CfgStatusBadge, _cfgStatusDetail);
+                    break;
+                default:
+                    CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 107, 114, 128));
+                    ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("SelectCsRootTooltip"));
+                    break;
+            }
+
+            UpdateReadinessText();
+        }
+
+        private void UpdateReadinessText()
+        {
+            bool serviceReady = _serviceConnectionState == KillEventConnectionState.Connected;
+            bool cfgReady = _cfgDetectionState == CfgDetectionState.Ready;
+
+            if (serviceReady && cfgReady)
+            {
+                ReadinessText.Text = LocalizationManager.Text("ReadyBothLights");
+                ReadinessText.Foreground = new SolidColorBrush(Color.FromArgb(255, 167, 243, 208));
+                return;
+            }
+
+            ReadinessText.Text = LocalizationManager.Text("NeedBothLights");
+            ReadinessText.Foreground = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
+        }
+
+        private static string ResolveCfgStatusLabel(CfgDetectionState state)
+        {
+            switch (state)
+            {
+                case CfgDetectionState.Checking:
+                    return LocalizationManager.Text("CfgChecking");
+                case CfgDetectionState.Ready:
+                    return LocalizationManager.Text("CfgReady");
+                case CfgDetectionState.Missing:
+                    return LocalizationManager.Text("CfgMissing");
+                case CfgDetectionState.Error:
+                    return LocalizationManager.Text("CfgCheckFailed");
+                default:
+                    return LocalizationManager.Text("CfgNotChecked");
+            }
+        }
+
+        private static string ResolveCfgHintText(CfgDetectionState state, string detail)
+        {
+            if (state == CfgDetectionState.NotSelected)
+            {
+                return LocalizationManager.Text("CfgSelectRootHint");
+            }
+
+            if (state == CfgDetectionState.Error)
+            {
+                return string.IsNullOrWhiteSpace(detail)
+                    ? LocalizationManager.Text("CfgWrongFolderHint")
+                    : detail;
+            }
+
+            if (string.IsNullOrWhiteSpace(detail))
+            {
+                return LocalizationManager.Text("CfgSelectRootHint");
+            }
+
+            return LocalizationManager.Text("CfgSavedFolderPrefix") + detail;
         }
 
         private void OnBrightnessValueChanged(object sender, RangeBaseValueChangedEventArgs e)
@@ -982,6 +1441,15 @@ namespace TestXboxGameBar
             Center,
             Manual,
             LowerThird
+        }
+
+        private enum CfgDetectionState
+        {
+            NotSelected,
+            Checking,
+            Ready,
+            Missing,
+            Error
         }
 
         private sealed class TestPreset

@@ -30,7 +30,7 @@ use util::playback::{get_output_stream, list_host_devices};
 
 use anyhow::{Context, Result};
 use soundpack::Preset;
-use util::event_stream::{events_ws, health, test_event};
+use util::event_stream::{cs2_root, events_ws, health, shutdown, test_event};
 use util::handler::update;
 
 const DEFAULT_LOG_LEVEL: LevelFilter = if cfg!(debug_assertions) {
@@ -114,6 +114,7 @@ async fn run() -> Result<()> {
     service_log(&format!("preset '{preset_name}' loaded"));
 
     let (event_tx, _) = broadcast::channel(64);
+    let (shutdown_tx, shutdown_rx) = broadcast::channel(1);
 
     let app_state = Arc::new(AppState {
         mutable: RwLock::new(Mutable {
@@ -132,12 +133,15 @@ async fn run() -> Result<()> {
         args,
         preset: RwLock::new(preset),
         event_tx,
+        shutdown_tx,
     });
 
     let app = Router::new()
         .route("/", post(update))
         .route("/events", get(events_ws))
         .route("/health", get(health))
+        .route("/cs2-root", get(cs2_root))
+        .route("/shutdown", post(shutdown))
         .route("/soundpack", get(util::event_stream::soundpack).post(util::event_stream::set_soundpack))
         .route("/test/{kill_count}", get(test_event).post(test_event))
         .with_state(app_state)
@@ -152,7 +156,7 @@ async fn run() -> Result<()> {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
     service_log("listening on 127.0.0.1:3000");
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal(shutdown_rx))
         .await?;
 
     Ok(())

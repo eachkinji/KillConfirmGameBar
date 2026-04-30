@@ -1,6 +1,7 @@
 use tokio::signal;
+use tokio::sync::broadcast;
 
-pub async fn shutdown_signal() {
+pub async fn shutdown_signal(mut shutdown_rx: broadcast::Receiver<()>) {
     let ctrl_c = async {
         signal::ctrl_c()
             .await
@@ -21,5 +22,6 @@ pub async fn shutdown_signal() {
     tokio::select! {
         _ = ctrl_c => {},
         _ = terminate => {},
+        _ = shutdown_rx.recv() => {},
     }
 }

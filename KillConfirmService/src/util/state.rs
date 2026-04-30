@@ -55,4 +55,5 @@ pub struct AppState {
     pub args: Args,
     pub preset: RwLock<Preset>,
     pub event_tx: broadcast::Sender<KillEvent>,
+    pub shutdown_tx: broadcast::Sender<()>,
 }

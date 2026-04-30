@@ -122,6 +122,7 @@
       <DependentUpon>KillConfirmAnimation.xaml</DependentUpon>
     </Compile>
     <Compile Include="Services\KillEventClient.cs" />
+    <Compile Include="Services\LocalizationManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
 

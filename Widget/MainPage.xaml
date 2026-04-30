@@ -8,48 +8,246 @@
     mc:Ignorable="d"
     Background="#0F171E">
 
-    <Grid Padding="28">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <ScrollViewer>
+        <Grid Padding="28" RowSpacing="22">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <StackPanel MaxWidth="720" HorizontalAlignment="Center">
-            <TextBlock
-                Text="Kill Confirm Overlay"
-                FontFamily="Bahnschrift SemiBold"
-                FontSize="32"
-                FontWeight="SemiBold"
-                Foreground="#F7FBFF" />
-            <TextBlock
-                Margin="0,8,0,0"
-                Text="Open Xbox Game Bar, then select Kill Confirm Overlay from the widget menu."
-                FontSize="16"
-                Foreground="#B7C7D8"
-                TextWrapping="WrapWholeWords" />
-        </StackPanel>
+            <StackPanel MaxWidth="980" HorizontalAlignment="Center">
+                <TextBlock
+                    x:Name="TitleText"
+                    Text="Kill Confirm Overlay"
+                    FontFamily="Bahnschrift SemiBold"
+                    FontSize="32"
+                    FontWeight="SemiBold"
+                    Foreground="#F7FBFF" />
+                <TextBlock
+                    x:Name="InstructionText"
+                    Margin="0,8,0,0"
+                    Text="Use this guide to set up the Xbox Game Bar widget before playing."
+                    FontSize="16"
+                    Foreground="#B7C7D8"
+                    TextWrapping="WrapWholeWords" />
+            </StackPanel>
 
-        <controls:KillConfirmAnimation
-            x:Name="KillAnimation"
-            Grid.Row="1"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center" />
-
-        <StackPanel
-            Grid.Row="2"
-            HorizontalAlignment="Center"
-            Spacing="10">
-            <Button
-                MinWidth="220"
+            <Grid
+                Grid.Row="1"
+                MaxWidth="980"
                 HorizontalAlignment="Center"
-                Click="OnOpenGameBarClick"
-                Content="Open Xbox Game Bar" />
-            <TextBlock
-                HorizontalAlignment="Center"
-                FontSize="13"
-                Foreground="#7F96AA"
-                Text="You can also press Win+G." />
-        </StackPanel>
-    </Grid>
+                ColumnSpacing="22">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.05*" />
+                    <ColumnDefinition Width="0.95*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="12">
+                    <Border
+                        Padding="16"
+                        Background="#16222D"
+                        BorderBrush="#2B3D4C"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <StackPanel Spacing="10">
+                            <TextBlock
+                                x:Name="GuideSetupTitleText"
+                                FontSize="17"
+                                FontWeight="SemiBold"
+                                Foreground="#F7FBFF"
+                                Text="Setup checklist" />
+                            <TextBlock
+                                x:Name="GuidePinText"
+                                FontSize="13"
+                                Foreground="#C8D6E4"
+                                Text="1. Press Win+G, open Kill Confirm Overlay, then pin it from the top-right."
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                x:Name="GuideLightsText"
+                                FontSize="13"
+                                Foreground="#C8D6E4"
+                                Text="2. SVC and CFG both need to be green before playing."
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                x:Name="GuideCfgText"
+                                FontSize="13"
+                                Foreground="#C8D6E4"
+                                Text="3. Select the CS2 root folder if CFG is not ready. The app remembers it."
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                x:Name="GuideTestText"
+                                FontSize="13"
+                                Foreground="#C8D6E4"
+                                Text="4. Use the play button to test animation and sound."
+                                TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border
+                        Padding="16"
+                        Background="#16222D"
+                        BorderBrush="#2B3D4C"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <StackPanel Spacing="10">
+                            <TextBlock
+                                x:Name="GuideControlsTitleText"
+                                FontSize="17"
+                                FontWeight="SemiBold"
+                                Foreground="#F7FBFF"
+                                Text="Panel controls" />
+                            <TextBlock
+                                x:Name="GuideVoiceText"
+                                FontSize="13"
+                                Foreground="#C8D6E4"
+                                Text="VOICE changes the sound pack."
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                x:Name="GuideViewText"
+                                FontSize="13"
+                                Foreground="#C8D6E4"
+                                Text="VIEW adjusts window position, icon size, brightness, and contrast."
+                                TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                x:Name="GuideServiceText"
+                                FontSize="13"
+                                Foreground="#C8D6E4"
+                                Text="The companion process starts with the widget and closes with it."
+                                TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock
+                        x:Name="ShortcutText"
+                        FontSize="13"
+                        Foreground="#8EA4B8"
+                        Text="Tip: Win+G opens Xbox Game Bar. The button was removed because Windows does not always honor the URI from packaged apps."
+                        TextWrapping="WrapWholeWords" />
+                </StackPanel>
+
+                <Border
+                    Grid.Column="1"
+                    Padding="16"
+                    Background="#101A23"
+                    BorderBrush="#2B3D4C"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="14">
+                        <TextBlock
+                            x:Name="GuidePreviewTitleText"
+                            FontSize="17"
+                            FontWeight="SemiBold"
+                            Foreground="#F7FBFF"
+                            Text="Widget map" />
+
+                        <Border
+                            Padding="12"
+                            Background="#172432"
+                            BorderBrush="#375066"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                            <StackPanel Spacing="8">
+                                <TextBlock
+                                    x:Name="MockPinText"
+                                    FontSize="10"
+                                    FontWeight="SemiBold"
+                                    Foreground="#FFFFE7A3"
+                                    Text="Pin the widget first" />
+
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Border
+                                        Width="48"
+                                        Height="28"
+                                        Background="#223040"
+                                        BorderBrush="#3E5164"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" Spacing="5">
+                                            <Border Width="8" Height="8" Background="#34D399" CornerRadius="4" />
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="#D8E7F5" Text="SVC" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border
+                                        Width="48"
+                                        Height="28"
+                                        Background="#223040"
+                                        BorderBrush="#3E5164"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" Spacing="5">
+                                            <Border Width="8" Height="8" Background="#34D399" CornerRadius="4" />
+                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="#D8E7F5" Text="CFG" />
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock
+                                        x:Name="MockReadyText"
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        FontWeight="SemiBold"
+                                        Foreground="#34D399"
+                                        Text="Ready when both are green" />
+                                </StackPanel>
+
+                                <Grid ColumnSpacing="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Height="28" Background="#1E2833" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#BFD0E3" Text="VOICE" />
+                                    </Border>
+                                    <Border Grid.Column="1" Height="28" Background="#223040" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" Foreground="#D8E7F5" Text="cf / cffhd / cfsex" />
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnSpacing="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50" />
+                                        <ColumnDefinition Width="28" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Height="28" Background="#1E2833" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#BFD0E3" Text="CFG" />
+                                    </Border>
+                                    <Border Grid.Column="1" Height="28" Background="#24303D" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
+                                        <PathIcon HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#D8E7F5" Data="M2,4 L6,4 L7.2,6 L14,6 L14,13 L2,13 Z" />
+                                    </Border>
+                                    <TextBlock
+                                        x:Name="MockCfgText"
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        Foreground="#BFD0E3"
+                                        Text="Pick CS2 root folder" />
+                                </Grid>
+
+                                <Grid ColumnSpacing="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="28" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Height="28" Background="#1E2833" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#BFD0E3" Text="TEST" />
+                                    </Border>
+                                    <Border Grid.Column="1" Height="28" Background="#223040" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" Foreground="#D8E7F5" Text="2 / 3 / HS / Knife" />
+                                    </Border>
+                                    <Border Grid.Column="2" Height="28" Background="#24303D" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
+                                        <PathIcon HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#F8FAFC" Data="M4,2 L13,8 L4,14 Z" />
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <controls:KillConfirmAnimation
+                            x:Name="KillAnimation"
+                            Height="150"
+                            HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </ScrollViewer>
 </Page>
