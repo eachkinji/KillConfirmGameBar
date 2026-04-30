@@ -13,6 +13,7 @@ use std::{
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
+    sync::atomic::AtomicU64,
     sync::Arc,
     time::Duration,
 };
@@ -30,7 +31,7 @@ use util::playback::{get_output_stream, list_host_devices};
 
 use anyhow::{Context, Result};
 use soundpack::Preset;
-use util::event_stream::{cs2_root, events_ws, health, shutdown, test_event};
+use util::event_stream::{cs2_root, events_ws, gsi_status, health, shutdown, test_event};
 use util::handler::update;
 
 const DEFAULT_LOG_LEVEL: LevelFilter = if cfg!(debug_assertions) {
@@ -134,12 +135,17 @@ async fn run() -> Result<()> {
         preset: RwLock::new(preset),
         event_tx,
         shutdown_tx,
+        gsi_posts: AtomicU64::new(0),
+        gsi_parse_errors: AtomicU64::new(0),
+        last_gsi_post_unix_ms: AtomicU64::new(0),
+        last_gsi_parse_error_unix_ms: AtomicU64::new(0),
     });
 
     let app = Router::new()
         .route("/", post(update))
         .route("/events", get(events_ws))
         .route("/health", get(health))
+        .route("/gsi-status", get(gsi_status))
         .route("/cs2-root", get(cs2_root))
         .route("/shutdown", post(shutdown))
         .route("/soundpack", get(util::event_stream::soundpack).post(util::event_stream::set_soundpack))

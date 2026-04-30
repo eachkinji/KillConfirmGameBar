@@ -230,6 +230,36 @@
                         </StackPanel>
                     </Border>
 
+                    <Border
+                        x:Name="GsiStatusBadge"
+                        Grid.Column="4"
+                        Width="46"
+                        Height="28"
+                        Background="#223040"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        ToolTipService.ToolTip="CS2 data status">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="5">
+                            <Border
+                                x:Name="GsiDot"
+                                Width="8"
+                                Height="8"
+                                Background="#FF6B7280"
+                                CornerRadius="4" />
+                            <TextBlock
+                                x:Name="GsiBadgeText"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Foreground="#FFBFD0E3"
+                                Text="GSI" />
+                        </StackPanel>
+                    </Border>
+
                     <TextBlock
                         x:Name="ReadinessText"
                         Grid.Column="5"

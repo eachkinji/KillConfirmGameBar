@@ -2,7 +2,9 @@ use std::{
     fs,
     path::PathBuf,
     process::Command,
+    sync::atomic::Ordering,
     sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use axum::{
@@ -39,6 +41,15 @@ pub struct TestEventQuery {
 pub struct HealthResponse {
     pub ok: bool,
     pub service: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GsiStatusResponse {
+    pub posts: u64,
+    pub parse_errors: u64,
+    pub last_post_unix_ms: Option<u64>,
+    pub last_post_age_ms: Option<u64>,
+    pub last_parse_error_unix_ms: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -84,6 +95,22 @@ pub async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {
         ok: true,
         service: "kill-confirm-gamebar",
+    })
+}
+
+pub async fn gsi_status(State(app_state): State<Arc<AppState>>) -> Json<GsiStatusResponse> {
+    let now = unix_time_ms();
+    let last_post = zero_to_none(app_state.last_gsi_post_unix_ms.load(Ordering::Relaxed));
+    Json(GsiStatusResponse {
+        posts: app_state.gsi_posts.load(Ordering::Relaxed),
+        parse_errors: app_state.gsi_parse_errors.load(Ordering::Relaxed),
+        last_post_unix_ms: last_post,
+        last_post_age_ms: last_post.map(|value| now.saturating_sub(value)),
+        last_parse_error_unix_ms: zero_to_none(
+            app_state
+                .last_gsi_parse_error_unix_ms
+                .load(Ordering::Relaxed),
+        ),
     })
 }
 
@@ -326,6 +353,21 @@ fn push_unique_path(paths: &mut Vec<PathBuf>, path: PathBuf) {
         .any(|existing| existing.to_string_lossy().eq_ignore_ascii_case(&normalized))
     {
         paths.push(path);
+    }
+}
+
+fn unix_time_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|value| value.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn zero_to_none(value: u64) -> Option<u64> {
+    if value == 0 {
+        None
+    } else {
+        Some(value)
     }
 }
 

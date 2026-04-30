@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicU64;
 use std::time::Instant;
 
 use rodio::OutputStream;
@@ -56,4 +57,8 @@ pub struct AppState {
     pub preset: RwLock<Preset>,
     pub event_tx: broadcast::Sender<KillEvent>,
     pub shutdown_tx: broadcast::Sender<()>,
+    pub gsi_posts: AtomicU64,
+    pub gsi_parse_errors: AtomicU64,
+    pub last_gsi_post_unix_ms: AtomicU64,
+    pub last_gsi_parse_error_unix_ms: AtomicU64,
 }

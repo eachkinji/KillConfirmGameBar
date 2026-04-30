@@ -1,8 +1,10 @@
+use axum::body::Bytes;
 use anyhow::Result;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use gsi_cs2::Body;
 use gsi_cs2::round::RoundPhase;
 use gsi_cs2::weapon::{WeaponState, WeaponType};
@@ -10,6 +12,7 @@ use thiserror::Error;
 use tracing::{error, info, warn};
 
 use crate::soundpack::sound::play_audio;
+use crate::util::logging::service_log;
 
 use super::state::{AppState, KillEvent, PendingLastKill, TrackedRoundPhase};
 
@@ -27,8 +30,29 @@ impl IntoResponse for ApiError {
 
 pub async fn update(
     State(app_state): State<Arc<AppState>>,
-    data: Json<Body>,
+    body: Bytes,
 ) -> Result<StatusCode, ApiError> {
+    app_state.gsi_posts.fetch_add(1, Ordering::Relaxed);
+    app_state
+        .last_gsi_post_unix_ms
+        .store(unix_time_ms(), Ordering::Relaxed);
+
+    let data: Body = match serde_json::from_slice(&body) {
+        Ok(data) => data,
+        Err(error) => {
+            app_state.gsi_parse_errors.fetch_add(1, Ordering::Relaxed);
+            app_state
+                .last_gsi_parse_error_unix_ms
+                .store(unix_time_ms(), Ordering::Relaxed);
+            service_log(&format!(
+                "GSI parse error: {error}; payload bytes={}",
+                body.len()
+            ));
+            warn!("failed to parse GSI payload: {error}");
+            return Ok(StatusCode::BAD_REQUEST);
+        }
+    };
+
     let map = data.map.as_ref();
     let player_data = data.player.as_ref();
     let round = data.round.as_ref();
@@ -230,6 +254,13 @@ pub async fn update(
     }
 
     Ok(StatusCode::OK)
+}
+
+fn unix_time_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|value| value.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 fn map_round_phase(phase: &RoundPhase) -> TrackedRoundPhase {

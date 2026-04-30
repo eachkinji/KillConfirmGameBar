@@ -70,7 +70,10 @@ namespace TestXboxGameBar
             "}\r\n";
         private const int ControlPanelStateRefreshMs = 250;
         private const string PackagedServiceParameterGroupId = "CrossfirePreset";
+        private const int GsiStatusRefreshMs = 1000;
+        private const double RecentGsiAgeMs = 120000;
         private static readonly Uri ServiceHealthUri = new Uri("http://127.0.0.1:3000/health");
+        private static readonly Uri GsiStatusUri = new Uri("http://127.0.0.1:3000/gsi-status");
         private static readonly Uri ServiceShutdownUri = new Uri("http://127.0.0.1:3000/shutdown");
         private static readonly Uri SoundPackUri = new Uri("http://127.0.0.1:3000/soundpack");
         private static readonly Uri Cs2RootUri = new Uri("http://127.0.0.1:3000/cs2-root");
@@ -115,6 +118,9 @@ namespace TestXboxGameBar
         private CfgDetectionState _cfgDetectionState = CfgDetectionState.NotSelected;
         private string _cfgStatusDetail = string.Empty;
         private KillEventConnectionState _serviceConnectionState = KillEventConnectionState.Disconnected;
+        private bool _gsiRecentlySeen;
+        private bool _gsiStatusCheckPending;
+        private DateTimeOffset _lastGsiStatusCheck = DateTimeOffset.MinValue;
         private readonly DispatcherTimer _controlPanelStateTimer;
         private readonly DispatcherTimer _streakBadgeTimer;
 
@@ -386,6 +392,11 @@ namespace TestXboxGameBar
         private void OnControlPanelStateTimerTick(object sender, object e)
         {
             SyncWidgetPresentationState();
+            if (!_gsiStatusCheckPending
+                && DateTimeOffset.Now - _lastGsiStatusCheck > TimeSpan.FromMilliseconds(GsiStatusRefreshMs))
+            {
+                _ = RefreshGsiStatusAsync();
+            }
         }
 
         private void OnStreakBadgeTimerTick(object sender, object e)
@@ -614,9 +625,11 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(CheckServiceButton, LocalizationManager.Text("CheckServiceTooltip"));
             ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTooltip"));
             ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTooltip"));
+            ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTooltip"));
 
             ServiceBadgeText.Text = "SVC";
             CfgBadgeText.Text = "CFG";
+            GsiBadgeText.Text = "GSI";
             VoiceLabelText.Text = LocalizationManager.Text("VoiceLabel");
             CfgLabelText.Text = LocalizationManager.Text("CfgLabel");
             TestLabelText.Text = LocalizationManager.Text("TestLabel");
@@ -648,6 +661,7 @@ namespace TestXboxGameBar
 
             UpdateConnectionState(_serviceConnectionState);
             UpdateCfgStatus(_cfgDetectionState, null, _cfgStatusDetail);
+            UpdateGsiStatus(true, _gsiRecentlySeen, _gsiRecentlySeen ? 1 : 0, null);
         }
 
         private void ConfigureWidgetCapabilities()
@@ -826,6 +840,53 @@ namespace TestXboxGameBar
             {
                 return false;
             }
+        }
+
+        private async Task RefreshGsiStatusAsync()
+        {
+            _gsiStatusCheckPending = true;
+            _lastGsiStatusCheck = DateTimeOffset.Now;
+
+            try
+            {
+                using (var client = new HttpClient())
+                using (HttpResponseMessage response = await client.GetAsync(GsiStatusUri))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        UpdateGsiStatus(false, false, 0, null);
+                        return;
+                    }
+
+                    string responseText = await response.Content.ReadAsStringAsync();
+                    JsonObject json = JsonObject.Parse(responseText);
+                    double posts = json.GetNamedNumber("posts", 0);
+                    double? ageMs = TryGetJsonNumber(json, "last_post_age_ms");
+                    bool recentlySeen = posts > 0 && ageMs.HasValue && ageMs.Value <= RecentGsiAgeMs;
+                    UpdateGsiStatus(true, recentlySeen, posts, ageMs);
+                }
+            }
+            catch (Exception)
+            {
+                UpdateGsiStatus(false, false, 0, null);
+            }
+            finally
+            {
+                _gsiStatusCheckPending = false;
+            }
+        }
+
+        private static double? TryGetJsonNumber(JsonObject json, string key)
+        {
+            if (!json.ContainsKey(key))
+            {
+                return null;
+            }
+
+            IJsonValue value = json.GetNamedValue(key);
+            return value.ValueType == JsonValueType.Number
+                ? value.GetNumber()
+                : (double?)null;
         }
 
         private static async Task RequestServiceShutdownAsync()
@@ -1282,19 +1343,49 @@ namespace TestXboxGameBar
             UpdateReadinessText();
         }
 
+        private void UpdateGsiStatus(bool serviceReachable, bool recentlySeen, double posts, double? ageMs)
+        {
+            _gsiRecentlySeen = recentlySeen;
+
+            if (recentlySeen)
+            {
+                GsiDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
+                ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiReceivingTooltip"));
+            }
+            else if (serviceReachable && posts > 0)
+            {
+                GsiDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
+                ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStaleTooltip"));
+            }
+            else if (serviceReachable)
+            {
+                GsiDot.Background = new SolidColorBrush(Color.FromArgb(255, 107, 114, 128));
+                ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiWaitingTooltip"));
+            }
+            else
+            {
+                GsiDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
+                ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("ServiceOffline"));
+            }
+
+            UpdateReadinessText();
+        }
+
         private void UpdateReadinessText()
         {
             bool serviceReady = _serviceConnectionState == KillEventConnectionState.Connected;
             bool cfgReady = _cfgDetectionState == CfgDetectionState.Ready;
 
-            if (serviceReady && cfgReady)
+            if (serviceReady && cfgReady && _gsiRecentlySeen)
             {
-                ReadinessText.Text = LocalizationManager.Text("ReadyBothLights");
+                ReadinessText.Text = LocalizationManager.Text("ReadyAllSignals");
                 ReadinessText.Foreground = new SolidColorBrush(Color.FromArgb(255, 167, 243, 208));
                 return;
             }
 
-            ReadinessText.Text = LocalizationManager.Text("NeedBothLights");
+            ReadinessText.Text = serviceReady && cfgReady
+                ? LocalizationManager.Text("WaitingGsi")
+                : LocalizationManager.Text("NeedBothLights");
             ReadinessText.Foreground = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
         }
 
