@@ -630,6 +630,7 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(TestPresetSelector, LocalizationManager.Text("TestPresetTooltip"));
             ToolTipService.SetToolTip(PreviewButton, LocalizationManager.Text("PreviewTooltip"));
             ToolTipService.SetToolTip(SendTestButton, LocalizationManager.Text("SendTestTooltip"));
+            SendTestButtonText.Text = LocalizationManager.Text("SendTestButton");
 
             ToolTipService.SetToolTip(DefaultSizeButton, LocalizationManager.Text("DefaultSizeTooltip"));
             ToolTipService.SetToolTip(CenterButton, LocalizationManager.Text("CenterWindowTooltip"));

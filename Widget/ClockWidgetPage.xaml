@@ -89,12 +89,12 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Grid ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -413,19 +413,59 @@
                         <PathIcon Data="M4,2 L13,8 L4,14 Z" />
                     </Button>
 
-                    <Button
-                        x:Name="SendTestButton"
-                        Grid.Column="3"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
-                        Click="OnTestEventClick"
-                        ToolTipService.ToolTip="Send selected test event">
-                        <PathIcon Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z M11,5 L13,7 L13,9 L11,11 Z" />
-                    </Button>
-
                 </Grid>
 
                 <Grid
                     Grid.Row="5"
+                    ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Width="50"
+                        Height="28"
+                        Background="#1E2833"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9">
+                        <PathIcon
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Foreground="#FFBFD0E3"
+                            Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z" />
+                    </Border>
+
+                    <Button
+                        x:Name="SendTestButton"
+                        Grid.Column="1"
+                        Height="28"
+                        HorizontalAlignment="Stretch"
+                        Padding="10,0"
+                        Background="#24303D"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        Click="OnTestEventClick"
+                        CornerRadius="9"
+                        Foreground="#FFF8FAFC"
+                        ToolTipService.ToolTip="Send selected test event">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="6">
+                            <PathIcon Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z M11,5 L13,7 L13,9 L11,11 Z" />
+                            <TextBlock
+                                x:Name="SendTestButtonText"
+                                FontSize="10"
+                                FontWeight="SemiBold"
+                                Text="Send service test" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid
+                    Grid.Row="6"
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -521,7 +561,7 @@
                 </Grid>
 
                 <Grid
-                    Grid.Row="6"
+                    Grid.Row="7"
                     ColumnSpacing="6"
                     VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
