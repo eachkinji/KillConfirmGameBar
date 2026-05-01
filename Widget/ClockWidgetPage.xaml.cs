@@ -74,7 +74,7 @@ namespace TestXboxGameBar
             "}\r\n";
         private const int ControlPanelStateRefreshMs = 250;
         private const string PackagedServiceParameterGroupId = "CrossfirePreset";
-        private const int GsiStatusRefreshMs = 1000;
+        private const int GsiStatusRefreshMs = 10000;
         private const double RecentGsiAgeMs = 120000;
         private static readonly Uri ServiceHealthUri = new Uri("http://127.0.0.1:3000/health");
         private static readonly Uri GsiStatusUri = new Uri("http://127.0.0.1:3000/gsi-status");
@@ -396,7 +396,8 @@ namespace TestXboxGameBar
         private void OnControlPanelStateTimerTick(object sender, object e)
         {
             SyncWidgetPresentationState();
-            if (!_gsiStatusCheckPending
+            if (IsControlPanelVisible()
+                && !_gsiStatusCheckPending
                 && DateTimeOffset.Now - _lastGsiStatusCheck > TimeSpan.FromMilliseconds(GsiStatusRefreshMs))
             {
                 _ = RefreshGsiStatusAsync();
@@ -1256,15 +1257,18 @@ namespace TestXboxGameBar
 
         private void UpdateControlPanelVisibility()
         {
-            bool isMinimized = _windowState == XboxGameBarWidgetWindowState.Minimized;
-            bool showControlPanel =
-                _isWidgetVisible &&
-                _displayMode == XboxGameBarDisplayMode.Foreground &&
-                !isMinimized;
+            bool showControlPanel = IsControlPanelVisible();
 
             ControlPanel.Visibility = showControlPanel ? Visibility.Visible : Visibility.Collapsed;
             ControlPanel.IsHitTestVisible = showControlPanel;
             ControlPanel.Opacity = showControlPanel ? 1.0 : 0.0;
+        }
+
+        private bool IsControlPanelVisible()
+        {
+            return _isWidgetVisible
+                && _displayMode == XboxGameBarDisplayMode.Foreground
+                && _windowState != XboxGameBarWidgetWindowState.Minimized;
         }
 
         private void SyncWidgetPresentationState()

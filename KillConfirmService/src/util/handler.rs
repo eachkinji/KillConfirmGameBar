@@ -257,6 +257,12 @@ pub async fn update(
 }
 
 fn parse_gsi_body(body: &[u8]) -> serde_json::Result<Body> {
+    match serde_json::from_slice(body) {
+        Ok(data) => return Ok(data),
+        Err(error) if !error.to_string().contains("missing field `auth`") => return Err(error),
+        Err(_) => {}
+    }
+
     let mut value: serde_json::Value = serde_json::from_slice(body)?;
 
     if let Some(object) = value.as_object_mut() {

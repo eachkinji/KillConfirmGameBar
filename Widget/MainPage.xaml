@@ -2,7 +2,6 @@
     x:Class="TestXboxGameBar.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:TestXboxGameBar.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -241,10 +240,11 @@
                             </StackPanel>
                         </Border>
 
-                        <controls:KillConfirmAnimation
-                            x:Name="KillAnimation"
+                        <Image
                             Height="150"
-                            HorizontalAlignment="Center" />
+                            HorizontalAlignment="Center"
+                            Source="Assets/KillConfirm/1killre/frame_00286.png"
+                            Stretch="Uniform" />
                     </StackPanel>
                 </Border>
             </Grid>

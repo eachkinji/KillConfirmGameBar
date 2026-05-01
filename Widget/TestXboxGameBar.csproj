@@ -141,7 +141,7 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
-    <Content Include="Assets\KillConfirm\*\**\*">
+    <Content Include="Assets\KillConfirmSheets\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="GameBar\Square44x44Logo.png" />
@@ -176,6 +176,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform" Version="6.2.14" />
     <PackageReference Include="Microsoft.Gaming.XboxGameBar" Version="7.3.2511061" />
+    <PackageReference Include="Win2D.uwp" Version="1.28.0" />
   </ItemGroup>
 
   <ItemGroup>

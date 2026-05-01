@@ -1,0 +1,28 @@
+{
+  "frame_width": 611,
+  "frame_height": 445,
+  "frames": 77,
+  "fps": 60,
+  "source": "6killre",
+  "max_texture": 4096,
+  "sheets": [
+    {
+      "file": "6killre_00.png",
+      "start_frame": 0,
+      "frames": 54,
+      "cols": 6,
+      "rows": 9,
+      "width": 3666,
+      "height": 4005
+    },
+    {
+      "file": "6killre_01.png",
+      "start_frame": 54,
+      "frames": 23,
+      "cols": 6,
+      "rows": 4,
+      "width": 3666,
+      "height": 1780
+    }
+  ]
+}

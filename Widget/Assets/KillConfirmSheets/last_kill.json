@@ -1,0 +1,28 @@
+{
+  "frame_width": 753,
+  "frame_height": 436,
+  "frames": 78,
+  "fps": 60,
+  "source": "last_kill",
+  "max_texture": 4096,
+  "sheets": [
+    {
+      "file": "last_kill_00.png",
+      "start_frame": 0,
+      "frames": 45,
+      "cols": 5,
+      "rows": 9,
+      "width": 3765,
+      "height": 3924
+    },
+    {
+      "file": "last_kill_01.png",
+      "start_frame": 45,
+      "frames": 33,
+      "cols": 5,
+      "rows": 7,
+      "width": 3765,
+      "height": 3052
+    }
+  ]
+}

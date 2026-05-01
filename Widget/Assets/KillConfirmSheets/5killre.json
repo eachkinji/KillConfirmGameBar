@@ -1,0 +1,28 @@
+{
+  "frame_width": 593,
+  "frame_height": 436,
+  "frames": 77,
+  "fps": 60,
+  "source": "5killre",
+  "max_texture": 4096,
+  "sheets": [
+    {
+      "file": "5killre_00.png",
+      "start_frame": 0,
+      "frames": 54,
+      "cols": 6,
+      "rows": 9,
+      "width": 3558,
+      "height": 3924
+    },
+    {
+      "file": "5killre_01.png",
+      "start_frame": 54,
+      "frames": 23,
+      "cols": 6,
+      "rows": 4,
+      "width": 3558,
+      "height": 1744
+    }
+  ]
+}

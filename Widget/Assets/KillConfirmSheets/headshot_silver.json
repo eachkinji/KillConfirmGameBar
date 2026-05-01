@@ -1,0 +1,37 @@
+{
+  "frame_width": 712,
+  "frame_height": 517,
+  "frames": 79,
+  "fps": 60,
+  "source": "headshot_silver",
+  "max_texture": 4096,
+  "sheets": [
+    {
+      "file": "headshot_silver_00.png",
+      "start_frame": 0,
+      "frames": 35,
+      "cols": 5,
+      "rows": 7,
+      "width": 3560,
+      "height": 3619
+    },
+    {
+      "file": "headshot_silver_01.png",
+      "start_frame": 35,
+      "frames": 35,
+      "cols": 5,
+      "rows": 7,
+      "width": 3560,
+      "height": 3619
+    },
+    {
+      "file": "headshot_silver_02.png",
+      "start_frame": 70,
+      "frames": 9,
+      "cols": 5,
+      "rows": 2,
+      "width": 3560,
+      "height": 1034
+    }
+  ]
+}

@@ -1,9 +1,7 @@
 using System;
-using System.IO;
 using Microsoft.Gaming.XboxGameBar;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
-using Windows.Storage;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -178,15 +176,6 @@ namespace TestXboxGameBar
 
         internal static void Log(string message)
         {
-            try
-            {
-                string logPath = Path.Combine(ApplicationData.Current.LocalFolder.Path, "gamebar-widget.log");
-                string line = DateTimeOffset.Now.ToString("O") + " " + message + Environment.NewLine;
-                File.AppendAllText(logPath, line);
-            }
-            catch
-            {
-            }
         }
     }
 }

@@ -1,0 +1,28 @@
+{
+  "frame_width": 619,
+  "frame_height": 530,
+  "frames": 79,
+  "fps": 60,
+  "source": "knife_kill",
+  "max_texture": 4096,
+  "sheets": [
+    {
+      "file": "knife_kill_00.png",
+      "start_frame": 0,
+      "frames": 42,
+      "cols": 6,
+      "rows": 7,
+      "width": 3714,
+      "height": 3710
+    },
+    {
+      "file": "knife_kill_01.png",
+      "start_frame": 42,
+      "frames": 37,
+      "cols": 6,
+      "rows": 7,
+      "width": 3714,
+      "height": 3710
+    }
+  ]
+}

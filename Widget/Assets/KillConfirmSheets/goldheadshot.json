@@ -1,0 +1,37 @@
+{
+  "frame_width": 832,
+  "frame_height": 524,
+  "frames": 79,
+  "fps": 60,
+  "source": "goldheadshot",
+  "max_texture": 4096,
+  "sheets": [
+    {
+      "file": "goldheadshot_00.png",
+      "start_frame": 0,
+      "frames": 28,
+      "cols": 4,
+      "rows": 7,
+      "width": 3328,
+      "height": 3668
+    },
+    {
+      "file": "goldheadshot_01.png",
+      "start_frame": 28,
+      "frames": 28,
+      "cols": 4,
+      "rows": 7,
+      "width": 3328,
+      "height": 3668
+    },
+    {
+      "file": "goldheadshot_02.png",
+      "start_frame": 56,
+      "frames": 23,
+      "cols": 4,
+      "rows": 6,
+      "width": 3328,
+      "height": 3144
+    }
+  ]
+}

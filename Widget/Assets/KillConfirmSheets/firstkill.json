@@ -1,0 +1,28 @@
+{
+  "frame_width": 753,
+  "frame_height": 436,
+  "frames": 78,
+  "fps": 60,
+  "source": "firstkill",
+  "max_texture": 4096,
+  "sheets": [
+    {
+      "file": "firstkill_00.png",
+      "start_frame": 0,
+      "frames": 45,
+      "cols": 5,
+      "rows": 9,
+      "width": 3765,
+      "height": 3924
+    },
+    {
+      "file": "firstkill_01.png",
+      "start_frame": 45,
+      "frames": 33,
+      "cols": 5,
+      "rows": 7,
+      "width": 3765,
+      "height": 3052
+    }
+  ]
+}

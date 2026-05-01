@@ -1,18 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
-using Windows.ApplicationModel;
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Effects;
+using Microsoft.Graphics.Canvas.UI.Xaml;
 using Windows.Data.Json;
 using Windows.Foundation;
-using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media.Imaging;
 
 namespace TestXboxGameBar.Controls
 {
@@ -29,19 +29,25 @@ namespace TestXboxGameBar.Controls
         private const string GoldHeadshotAssetKey = "goldheadshot";
         private const string KnifeKillAssetKey = "knife_kill";
         private const string LastKillAssetKey = "last_kill";
-        private const int FrameSequenceFps = 30;
+        private const int FrameSequenceFps = 60;
+        private const double TargetPlaybackDurationSeconds = 77.0 / FrameSequenceFps;
         private const int MaxCachedFrameWidth = 400;
         private const int MaxCachedFrameHeight = 300;
         private static double _brightnessBoost;
         private static double _contrastBoost;
 
         private static readonly Dictionary<string, SpriteMetadata> MetadataCache = new Dictionary<string, SpriteMetadata>();
-        private static readonly Dictionary<string, IReadOnlyList<WriteableBitmap>> FrameCache = new Dictionary<string, IReadOnlyList<WriteableBitmap>>();
+        private static readonly Dictionary<string, IReadOnlyList<SpriteSheetSegment>> SheetCache = new Dictionary<string, IReadOnlyList<SpriteSheetSegment>>();
         private readonly DispatcherTimer _timer;
+        private readonly Stopwatch _playbackClock = new Stopwatch();
 
         private SpriteMetadata _currentMetadata;
-        private IReadOnlyList<WriteableBitmap> _currentFrames;
-        private static ReferenceAnimationProfile _referenceProfile;
+        private IReadOnlyList<SpriteSheetSegment> _currentSheets;
+        private SpriteSheetSegment _currentSheet;
+        private CanvasBitmap _renderEffectSource;
+        private ICanvasImage _renderEffectImage;
+        private double _renderEffectBrightness = -1;
+        private double _renderEffectContrast = -1;
         private static Task _startupPreloadTask;
         private static Task _preloadTask;
         private int _currentFrame;
@@ -114,9 +120,6 @@ namespace TestXboxGameBar.Controls
 
             _brightnessBoost = normalizedBrightness;
             _contrastBoost = normalizedContrast;
-            FrameCache.Clear();
-            _startupPreloadTask = null;
-            _preloadTask = null;
         }
 
         private async void PlayInternal(Func<IProgress<int>, Task<AnimationAsset>> assetLoader)
@@ -144,20 +147,22 @@ namespace TestXboxGameBar.Controls
                 isLoading = false;
                 _timer.Stop();
                 _currentMetadata = asset.Metadata;
-                _currentFrames = asset.Frames;
+                _currentSheets = asset.Sheets;
+                _currentSheet = null;
                 _currentFrame = 0;
 
                 Viewport.Width = asset.Metadata.FrameWidth;
                 Viewport.Height = asset.Metadata.FrameHeight;
                 ViewportClip.Rect = new Rect(0, 0, asset.Metadata.FrameWidth, asset.Metadata.FrameHeight);
 
-                SpriteImage.Width = asset.Metadata.FrameWidth;
-                SpriteImage.Height = asset.Metadata.FrameHeight;
+                SpriteCanvas.Width = asset.Metadata.FrameWidth;
+                SpriteCanvas.Height = asset.Metadata.FrameHeight;
 
                 HideLoadingProgress();
                 Visibility = Visibility.Visible;
-                _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / asset.Metadata.Fps);
+                _timer.Interval = TimeSpan.FromMilliseconds(1000.0 / FrameSequenceFps);
                 ShowFrame(0);
+                _playbackClock.Restart();
                 _timer.Start();
             }
             catch
@@ -267,59 +272,48 @@ namespace TestXboxGameBar.Controls
             switch (assetKey)
             {
                 case HeadshotAssetKey:
-                    return await LoadFrameSequenceAssetAsync(HeadshotAssetKey, HeadshotAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(HeadshotAssetKey, progress);
                 case OneKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(OneKillRemasterAssetKey, OneKillRemasterAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(OneKillRemasterAssetKey, progress);
                 case TwoKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(TwoKillRemasterAssetKey, TwoKillRemasterAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(TwoKillRemasterAssetKey, progress);
                 case ThreeKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(ThreeKillRemasterAssetKey, ThreeKillRemasterAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(ThreeKillRemasterAssetKey, progress);
                 case FourKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(FourKillRemasterAssetKey, FourKillRemasterAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(FourKillRemasterAssetKey, progress);
                 case FiveKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(FiveKillRemasterAssetKey, FiveKillRemasterAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(FiveKillRemasterAssetKey, progress);
                 case SixKillRemasterAssetKey:
-                    return await LoadFrameSequenceAssetAsync(SixKillRemasterAssetKey, SixKillRemasterAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(SixKillRemasterAssetKey, progress);
                 case FirstKillAssetKey:
-                    return await LoadFrameSequenceAssetAsync(FirstKillAssetKey, FirstKillAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(FirstKillAssetKey, progress);
                 case GoldHeadshotAssetKey:
-                    return await LoadFrameSequenceAssetAsync(GoldHeadshotAssetKey, GoldHeadshotAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(GoldHeadshotAssetKey, progress);
                 case KnifeKillAssetKey:
-                    return await LoadFrameSequenceAssetAsync(KnifeKillAssetKey, KnifeKillAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(KnifeKillAssetKey, progress);
                 case LastKillAssetKey:
-                    return await LoadFrameSequenceAssetAsync(LastKillAssetKey, LastKillAssetKey, FrameSequenceFps, 0, progress);
+                    return await LoadTiledSpriteSheetAssetAsync(LastKillAssetKey, progress);
                 default:
                     throw new FileNotFoundException("Unsupported animation asset: " + assetKey);
             }
         }
 
-        private async Task<AnimationAsset> LoadReferencedFrameSequenceAssetAsync(string cacheKey, string folderName, int? referenceSpriteNumber = null)
+        private async Task<AnimationAsset> LoadTiledSpriteSheetAssetAsync(string assetName, IProgress<int> progress = null)
         {
-            ReferenceAnimationProfile referenceProfile = await LoadReferenceAnimationProfileAsync(referenceSpriteNumber);
-            return await LoadFrameSequenceAssetAsync(
-                cacheKey,
-                folderName,
-                referenceProfile.TargetFps,
-                referenceProfile.TargetFrameCount,
-                null);
+            SpriteMetadata metadata = await LoadTiledSpriteSheetMetadataAsync(assetName);
+            IReadOnlyList<SpriteSheetSegment> sheets = await LoadTiledSpriteSheetSegmentsAsync(assetName, metadata, progress);
+            return new AnimationAsset(metadata, sheets);
         }
 
-        private async Task<AnimationAsset> LoadSpriteSheetAssetAsync(string assetName)
+        private async Task<SpriteMetadata> LoadTiledSpriteSheetMetadataAsync(string assetName)
         {
-            SpriteMetadata metadata = await LoadSpriteSheetMetadataAsync(assetName);
-            IReadOnlyList<WriteableBitmap> frames = await LoadSpriteSheetFramesAsync(assetName, metadata);
-            return new AnimationAsset(metadata, frames);
-        }
-
-        private async Task<SpriteMetadata> LoadSpriteSheetMetadataAsync(string assetName)
-        {
-            string cacheKey = "sheet:" + assetName;
+            string cacheKey = "tiled-sheet:" + assetName;
             if (MetadataCache.TryGetValue(cacheKey, out SpriteMetadata cached))
             {
                 return cached;
             }
 
-            var uri = new Uri($"ms-appx:///Assets/KillConfirm/{assetName}.json");
+            var uri = new Uri($"ms-appx:///Assets/KillConfirmSheets/{assetName}.json");
             StorageFile file = await StorageFile.GetFileFromApplicationUriAsync(uri);
             string jsonText = await FileIO.ReadTextAsync(file);
             JsonObject json = JsonObject.Parse(jsonText);
@@ -329,179 +323,79 @@ namespace TestXboxGameBar.Controls
                 FrameWidth = (int)json.GetNamedNumber("frame_width", 400),
                 FrameHeight = (int)json.GetNamedNumber("frame_height", 300),
                 Frames = (int)json.GetNamedNumber("frames", 1),
-                Cols = (int)json.GetNamedNumber("cols", 1),
-                Rows = (int)json.GetNamedNumber("rows", 1),
-                Fps = Math.Max(1, (int)json.GetNamedNumber("fps", 30))
+                Fps = Math.Max(1, (int)json.GetNamedNumber("fps", FrameSequenceFps)),
+                SheetSegments = json.GetNamedArray("sheets", new JsonArray())
             };
 
             MetadataCache[cacheKey] = metadata;
             return metadata;
         }
 
-        private async Task<IReadOnlyList<WriteableBitmap>> LoadSpriteSheetFramesAsync(string assetName, SpriteMetadata metadata)
+        private async Task<IReadOnlyList<SpriteSheetSegment>> LoadTiledSpriteSheetSegmentsAsync(string assetName, SpriteMetadata metadata, IProgress<int> progress)
         {
-            string cacheKey = "sheet:" + assetName;
-            if (FrameCache.TryGetValue(cacheKey, out IReadOnlyList<WriteableBitmap> cached))
-            {
-                return cached;
-            }
-
-            var uri = new Uri($"ms-appx:///Assets/KillConfirm/{assetName}.png");
-            StorageFile file = await StorageFile.GetFileFromApplicationUriAsync(uri);
-            var frames = new List<WriteableBitmap>(metadata.Frames);
-
-            using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read))
-            {
-                BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
-
-                for (int frame = 0; frame < metadata.Frames; frame++)
-                {
-                    int col = frame % metadata.Cols;
-                    int row = frame / metadata.Cols;
-
-                    var transform = new BitmapTransform
-                    {
-                        Bounds = new BitmapBounds
-                        {
-                            X = (uint)(col * metadata.FrameWidth),
-                            Y = (uint)(row * metadata.FrameHeight),
-                            Width = (uint)metadata.FrameWidth,
-                            Height = (uint)metadata.FrameHeight
-                        }
-                    };
-
-                    PixelDataProvider pixels = await decoder.GetPixelDataAsync(
-                        BitmapPixelFormat.Bgra8,
-                        BitmapAlphaMode.Premultiplied,
-                        transform,
-                        ExifOrientationMode.IgnoreExifOrientation,
-                        ColorManagementMode.DoNotColorManage);
-
-                    byte[] data = pixels.DetachPixelData();
-                    ApplyColorBoost(data);
-                    var bitmap = new WriteableBitmap(metadata.FrameWidth, metadata.FrameHeight);
-
-                    using (Stream pixelStream = bitmap.PixelBuffer.AsStream())
-                    {
-                        await pixelStream.WriteAsync(data, 0, data.Length);
-                    }
-
-                    bitmap.Invalidate();
-                    frames.Add(bitmap);
-                }
-            }
-
-            FrameCache[cacheKey] = frames;
-            return frames;
-        }
-
-        private async Task<AnimationAsset> LoadFrameSequenceAssetAsync(string cacheKey, string folderName, int fps, int targetFrameCount, IProgress<int> progress = null)
-        {
-            SpriteMetadata metadata = await LoadFrameSequenceMetadataAsync(cacheKey, folderName, fps, targetFrameCount);
-            IReadOnlyList<WriteableBitmap> frames = await LoadFrameSequenceFramesAsync(cacheKey, folderName, metadata, targetFrameCount, progress);
-            return new AnimationAsset(metadata, frames);
-        }
-
-        private async Task<SpriteMetadata> LoadFrameSequenceMetadataAsync(string cacheKey, string folderName, int fps, int targetFrameCount)
-        {
-            string resolvedCacheKey = $"{cacheKey}:{fps}:{targetFrameCount}";
-            if (MetadataCache.TryGetValue(resolvedCacheKey, out SpriteMetadata cached))
-            {
-                return cached;
-            }
-
-            IReadOnlyList<StorageFile> files = await GetOrderedFrameFilesAsync(folderName);
-            IReadOnlyList<StorageFile> selectedFiles = SelectFrameSubset(files, targetFrameCount);
-            if (selectedFiles.Count == 0)
-            {
-                throw new FileNotFoundException("No headshot frames were found.");
-            }
-
-            using (IRandomAccessStream stream = await selectedFiles[0].OpenAsync(FileAccessMode.Read))
-            {
-                BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
-                Size targetSize = GetTargetFrameSize(decoder.PixelWidth, decoder.PixelHeight);
-
-                var metadata = new SpriteMetadata
-                {
-                    FrameWidth = (int)targetSize.Width,
-                    FrameHeight = (int)targetSize.Height,
-                    Frames = selectedFiles.Count,
-                    Cols = selectedFiles.Count,
-                    Rows = 1,
-                    Fps = Math.Max(1, fps)
-                };
-
-                MetadataCache[resolvedCacheKey] = metadata;
-                return metadata;
-            }
-        }
-
-        private async Task<IReadOnlyList<WriteableBitmap>> LoadFrameSequenceFramesAsync(string cacheKey, string folderName, SpriteMetadata metadata, int targetFrameCount, IProgress<int> progress)
-        {
-            string resolvedCacheKey = $"{cacheKey}:{metadata.Fps}:{targetFrameCount}";
-            if (FrameCache.TryGetValue(resolvedCacheKey, out IReadOnlyList<WriteableBitmap> cached))
+            string cacheKey = "tiled-sheet:" + assetName;
+            if (SheetCache.TryGetValue(cacheKey, out IReadOnlyList<SpriteSheetSegment> cached))
             {
                 progress?.Report(100);
                 return cached;
             }
 
-            IReadOnlyList<StorageFile> files = await GetOrderedFrameFilesAsync(folderName);
-            IReadOnlyList<StorageFile> selectedFiles = SelectFrameSubset(files, targetFrameCount);
-            var frames = new List<WriteableBitmap>(selectedFiles.Count);
-
-            for (int index = 0; index < selectedFiles.Count; index++)
+            var segments = new List<SpriteSheetSegment>();
+            JsonArray sheetArray = metadata.SheetSegments ?? new JsonArray();
+            for (uint index = 0; index < sheetArray.Count; index++)
             {
-                StorageFile file = selectedFiles[index];
-                using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read))
+                JsonObject item = sheetArray.GetObjectAt(index);
+                string fileName = item.GetNamedString("file", string.Empty);
+                if (string.IsNullOrWhiteSpace(fileName))
                 {
-                    BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
-
-                    var transform = new BitmapTransform();
-                    if (decoder.PixelWidth != (uint)metadata.FrameWidth || decoder.PixelHeight != (uint)metadata.FrameHeight)
-                    {
-                        transform.ScaledWidth = (uint)metadata.FrameWidth;
-                        transform.ScaledHeight = (uint)metadata.FrameHeight;
-                        transform.InterpolationMode = BitmapInterpolationMode.Linear;
-                    }
-
-                    PixelDataProvider pixels = await decoder.GetPixelDataAsync(
-                        BitmapPixelFormat.Bgra8,
-                        BitmapAlphaMode.Premultiplied,
-                        transform,
-                        ExifOrientationMode.IgnoreExifOrientation,
-                        ColorManagementMode.DoNotColorManage);
-
-                    byte[] data = pixels.DetachPixelData();
-                    ApplyColorBoost(data);
-                    var bitmap = new WriteableBitmap(metadata.FrameWidth, metadata.FrameHeight);
-
-                    using (Stream pixelStream = bitmap.PixelBuffer.AsStream())
-                    {
-                        await pixelStream.WriteAsync(data, 0, data.Length);
-                    }
-
-                    bitmap.Invalidate();
-                    frames.Add(bitmap);
+                    continue;
                 }
 
-                int percent = selectedFiles.Count == 0
+                CanvasBitmap bitmap = await LoadSheetBitmapAsync(fileName);
+
+                segments.Add(new SpriteSheetSegment
+                {
+                    Image = bitmap,
+                    StartFrame = (int)item.GetNamedNumber("start_frame", 0),
+                    Frames = (int)item.GetNamedNumber("frames", 0),
+                    Cols = Math.Max(1, (int)item.GetNamedNumber("cols", 1)),
+                    Rows = Math.Max(1, (int)item.GetNamedNumber("rows", 1)),
+                    Width = (int)item.GetNamedNumber("width", bitmap.SizeInPixels.Width),
+                    Height = (int)item.GetNamedNumber("height", bitmap.SizeInPixels.Height)
+                });
+
+                int percent = sheetArray.Count == 0
                     ? 100
-                    : (int)Math.Round(((index + 1) * 100.0) / selectedFiles.Count);
+                    : (int)Math.Round(((index + 1) * 100.0) / sheetArray.Count);
                 progress?.Report(Math.Max(1, Math.Min(100, percent)));
             }
 
-            FrameCache[resolvedCacheKey] = frames;
-            return frames;
+            SheetCache[cacheKey] = segments;
+            return segments;
+        }
+
+        private static async Task<CanvasBitmap> LoadSheetBitmapAsync(string fileName)
+        {
+            var uri = new Uri($"ms-appx:///Assets/KillConfirmSheets/{fileName}");
+            StorageFile file = await StorageFile.GetFileFromApplicationUriAsync(uri);
+
+            using (IRandomAccessStream stream = await file.OpenReadAsync())
+            {
+                return await CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), stream);
+            }
         }
 
         private void ShowLoadingProgress(int percent)
         {
             percent = Math.Max(0, Math.Min(100, percent));
             _timer.Stop();
-            SpriteImage.Source = null;
+            _playbackClock.Stop();
+            _currentSheet = null;
+            SpriteCanvas.Invalidate();
             Viewport.Width = MaxCachedFrameWidth;
             Viewport.Height = MaxCachedFrameHeight;
+            SpriteCanvas.Width = MaxCachedFrameWidth;
+            SpriteCanvas.Height = MaxCachedFrameHeight;
             ViewportClip.Rect = new Rect(0, 0, MaxCachedFrameWidth, MaxCachedFrameHeight);
             LoadingText.Text = $"Loading {percent}%";
             LoadingRing.IsActive = true;
@@ -515,194 +409,135 @@ namespace TestXboxGameBar.Controls
             LoadingOverlay.Visibility = Visibility.Collapsed;
         }
 
-        private async Task<ReferenceAnimationProfile> LoadReferenceAnimationProfileAsync(int? spriteNumber = null)
-        {
-            if (spriteNumber.HasValue)
-            {
-                int resolvedSpriteNumber = Math.Max(1, Math.Min(5, spriteNumber.Value));
-                SpriteMetadata metadata = await LoadSpriteSheetMetadataAsync(resolvedSpriteNumber.ToString());
-                return new ReferenceAnimationProfile(metadata.Fps, metadata.Frames);
-            }
-
-            if (_referenceProfile != null)
-            {
-                return _referenceProfile;
-            }
-
-            double totalDuration = 0;
-            double totalFps = 0;
-            int count = 0;
-
-            for (int spriteIndex = 1; spriteIndex <= 5; spriteIndex++)
-            {
-                SpriteMetadata metadata = await LoadSpriteSheetMetadataAsync(spriteIndex.ToString());
-                totalDuration += (double)metadata.Frames / metadata.Fps;
-                totalFps += metadata.Fps;
-                count++;
-            }
-
-            if (count == 0)
-            {
-                _referenceProfile = new ReferenceAnimationProfile(30, 34);
-                return _referenceProfile;
-            }
-
-            int targetFps = Math.Max(1, (int)Math.Round(totalFps / count));
-            int targetFrameCount = Math.Max(1, (int)Math.Round((totalDuration / count) * targetFps));
-
-            _referenceProfile = new ReferenceAnimationProfile(targetFps, targetFrameCount);
-            return _referenceProfile;
-        }
-
-        private static Size GetTargetFrameSize(uint originalWidth, uint originalHeight)
-        {
-            if (originalWidth == 0 || originalHeight == 0)
-            {
-                return new Size(MaxCachedFrameWidth, MaxCachedFrameHeight);
-            }
-
-            double scale = Math.Min(
-                1.0,
-                Math.Min(
-                    (double)MaxCachedFrameWidth / originalWidth,
-                    (double)MaxCachedFrameHeight / originalHeight));
-
-            return new Size(
-                Math.Max(1, Math.Round(originalWidth * scale)),
-                Math.Max(1, Math.Round(originalHeight * scale)));
-        }
-
-        private static async Task<IReadOnlyList<StorageFile>> GetOrderedFrameFilesAsync(string folderName)
-        {
-            StorageFolder folder = await Package.Current.InstalledLocation.GetFolderAsync(@"Assets\KillConfirm\" + folderName);
-            return (await folder.GetFilesAsync())
-                .Where(file => string.Equals(file.FileType, ".png", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(file => file.Name, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-
-        private static IReadOnlyList<StorageFile> SelectFrameSubset(IReadOnlyList<StorageFile> files, int targetFrameCount)
-        {
-            if (files.Count <= targetFrameCount || targetFrameCount <= 0)
-            {
-                return files;
-            }
-
-            var selectedFiles = new List<StorageFile>(targetFrameCount);
-            int lastIndex = -1;
-
-            for (int frameIndex = 0; frameIndex < targetFrameCount; frameIndex++)
-            {
-                double ratio = targetFrameCount == 1
-                    ? 0
-                    : (double)frameIndex / (targetFrameCount - 1);
-                int sourceIndex = (int)Math.Round(ratio * (files.Count - 1));
-
-                if (sourceIndex <= lastIndex)
-                {
-                    sourceIndex = Math.Min(files.Count - 1, lastIndex + 1);
-                }
-
-                selectedFiles.Add(files[sourceIndex]);
-                lastIndex = sourceIndex;
-            }
-
-            return selectedFiles;
-        }
-
-        private static void ApplyColorBoost(byte[] pixelData)
-        {
-            if (pixelData == null || pixelData.Length < 4)
-            {
-                return;
-            }
-
-            double brightnessBoost = _brightnessBoost;
-            double contrastBoost = _contrastBoost;
-            if (brightnessBoost <= 0 && contrastBoost <= 0)
-            {
-                return;
-            }
-
-            for (int index = 0; index <= pixelData.Length - 4; index += 4)
-            {
-                byte alpha = pixelData[index + 3];
-                if (alpha == 0)
-                {
-                    continue;
-                }
-
-                pixelData[index] = AdjustChannel(pixelData[index], alpha, brightnessBoost, contrastBoost);
-                pixelData[index + 1] = AdjustChannel(pixelData[index + 1], alpha, brightnessBoost, contrastBoost);
-                pixelData[index + 2] = AdjustChannel(pixelData[index + 2], alpha, brightnessBoost, contrastBoost);
-            }
-        }
-
-        private static byte AdjustChannel(byte premultipliedChannel, byte alpha, double brightnessBoost, double contrastBoost)
-        {
-            double normalizedAlpha = alpha / 255.0;
-            if (normalizedAlpha <= 0)
-            {
-                return 0;
-            }
-
-            double unpremultiplied = Math.Min(1.0, premultipliedChannel / (255.0 * normalizedAlpha));
-            if (brightnessBoost > 0)
-            {
-                double gamma = 1.0 - (brightnessBoost * 0.4);
-                unpremultiplied = Math.Pow(unpremultiplied, gamma);
-            }
-
-            if (contrastBoost > 0)
-            {
-                double contrastFactor = 1.0 + (contrastBoost * 1.35);
-                unpremultiplied = ((unpremultiplied - 0.5) * contrastFactor) + 0.5;
-            }
-
-            unpremultiplied = Math.Max(0.0, Math.Min(1.0, unpremultiplied));
-            double repremultiplied = unpremultiplied * normalizedAlpha * 255.0;
-
-            if (repremultiplied <= 0)
-            {
-                return 0;
-            }
-
-            if (repremultiplied >= alpha)
-            {
-                return alpha;
-            }
-
-            return (byte)Math.Round(repremultiplied);
-        }
-
         private void OnTick(object sender, object e)
         {
-            if (_currentMetadata == null || _currentFrames == null)
+            if (_currentMetadata == null || _currentSheets == null)
             {
                 _timer.Stop();
+                _playbackClock.Stop();
                 Visibility = Visibility.Collapsed;
                 return;
             }
 
-            _currentFrame++;
-            if (_currentFrame >= _currentMetadata.Frames)
+            double playbackProgress = _playbackClock.Elapsed.TotalSeconds / TargetPlaybackDurationSeconds;
+            int elapsedFrame = (int)Math.Floor(playbackProgress * _currentMetadata.Frames);
+            if (elapsedFrame <= _currentFrame)
+            {
+                return;
+            }
+
+            if (elapsedFrame >= _currentMetadata.Frames)
             {
                 _timer.Stop();
+                _playbackClock.Stop();
                 Visibility = Visibility.Collapsed;
                 return;
             }
 
+            _currentFrame = elapsedFrame;
             ShowFrame(_currentFrame);
         }
 
         private void ShowFrame(int frame)
         {
-            if (_currentFrames == null || frame < 0 || frame >= _currentFrames.Count)
+            if (frame < 0)
             {
                 return;
             }
 
-            SpriteImage.Source = _currentFrames[frame];
+            ShowSheetFrame(frame);
+        }
+
+        private void ShowSheetFrame(int frame)
+        {
+            SpriteSheetSegment sheet = _currentSheets.FirstOrDefault(value =>
+                frame >= value.StartFrame && frame < value.StartFrame + value.Frames);
+            if (sheet == null)
+            {
+                return;
+            }
+
+            int localFrame = frame - sheet.StartFrame;
+            int col = localFrame % sheet.Cols;
+            int row = localFrame / sheet.Cols;
+
+            if (!ReferenceEquals(_currentSheet, sheet))
+            {
+                _currentSheet = sheet;
+                _renderEffectSource = null;
+                _renderEffectImage = null;
+            }
+
+            SpriteCanvas.Invalidate();
+        }
+
+        private void OnSpriteCanvasDraw(CanvasControl sender, CanvasDrawEventArgs args)
+        {
+            if (_currentMetadata == null || _currentSheet == null || _currentSheet.Image == null)
+            {
+                return;
+            }
+
+            int localFrame = _currentFrame - _currentSheet.StartFrame;
+            if (localFrame < 0 || localFrame >= _currentSheet.Frames)
+            {
+                return;
+            }
+
+            int col = localFrame % _currentSheet.Cols;
+            int row = localFrame / _currentSheet.Cols;
+            var sourceRect = new Rect(
+                col * _currentMetadata.FrameWidth,
+                row * _currentMetadata.FrameHeight,
+                _currentMetadata.FrameWidth,
+                _currentMetadata.FrameHeight);
+            var targetRect = new Rect(0, 0, _currentMetadata.FrameWidth, _currentMetadata.FrameHeight);
+
+            args.DrawingSession.DrawImage(GetRenderImage(_currentSheet.Image), targetRect, sourceRect);
+        }
+
+        private ICanvasImage GetRenderImage(CanvasBitmap source)
+        {
+            if (ReferenceEquals(_renderEffectSource, source)
+                && _renderEffectImage != null
+                && Math.Abs(_renderEffectBrightness - _brightnessBoost) < 0.0001
+                && Math.Abs(_renderEffectContrast - _contrastBoost) < 0.0001)
+            {
+                return _renderEffectImage;
+            }
+
+            _renderEffectSource = source;
+            _renderEffectBrightness = _brightnessBoost;
+            _renderEffectContrast = _contrastBoost;
+            _renderEffectImage = BuildRenderEffect(source);
+            return _renderEffectImage;
+        }
+
+        private static ICanvasImage BuildRenderEffect(ICanvasImage source)
+        {
+            ICanvasImage image = source;
+            double contrastBoost = _contrastBoost;
+            double brightnessBoost = _brightnessBoost;
+
+            if (contrastBoost > 0)
+            {
+                image = new ContrastEffect
+                {
+                    Source = image,
+                    Contrast = (float)Math.Min(1.0, contrastBoost * 1.35)
+                };
+            }
+
+            if (brightnessBoost > 0)
+            {
+                image = new ExposureEffect
+                {
+                    Source = image,
+                    Exposure = (float)(brightnessBoost * 1.25)
+                };
+            }
+
+            return image;
         }
 
         private sealed class SpriteMetadata
@@ -713,30 +548,31 @@ namespace TestXboxGameBar.Controls
             public int Cols { get; set; }
             public int Rows { get; set; }
             public int Fps { get; set; }
+            public JsonArray SheetSegments { get; set; }
         }
 
         private sealed class AnimationAsset
         {
-            public AnimationAsset(SpriteMetadata metadata, IReadOnlyList<WriteableBitmap> frames)
+            public AnimationAsset(SpriteMetadata metadata, IReadOnlyList<SpriteSheetSegment> sheets)
             {
                 Metadata = metadata;
-                Frames = frames;
+                Sheets = sheets;
             }
 
             public SpriteMetadata Metadata { get; }
-            public IReadOnlyList<WriteableBitmap> Frames { get; }
+            public IReadOnlyList<SpriteSheetSegment> Sheets { get; }
         }
 
-        private sealed class ReferenceAnimationProfile
+        private sealed class SpriteSheetSegment
         {
-            public ReferenceAnimationProfile(int targetFps, int targetFrameCount)
-            {
-                TargetFps = targetFps;
-                TargetFrameCount = targetFrameCount;
-            }
-
-            public int TargetFps { get; }
-            public int TargetFrameCount { get; }
+            public CanvasBitmap Image { get; set; }
+            public int StartFrame { get; set; }
+            public int Frames { get; set; }
+            public int Cols { get; set; }
+            public int Rows { get; set; }
+            public int Width { get; set; }
+            public int Height { get; set; }
         }
+
     }
 }
