@@ -170,7 +170,6 @@ namespace TestXboxGameBar
             _ = EnsureServiceAvailableAsync();
             _ = LoadSavedCsFolderAsync();
             _ = WarmStartupAnimationCacheAsync();
-            _ = WarmExtendedAnimationCacheAsync();
             UpdateControlPanelVisibility();
             base.OnNavigatedTo(e);
         }
@@ -1028,7 +1027,6 @@ namespace TestXboxGameBar
             {
                 await Task.Delay(StartupPreloadDelayMs);
                 await PrimaryKillAnimation.PreloadStartupAnimationsAsync();
-                await BadgeKillAnimation.PreloadStartupAnimationsAsync();
             }
             catch (Exception)
             {

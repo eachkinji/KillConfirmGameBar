@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Microsoft.Graphics.Canvas;
-using Microsoft.Graphics.Canvas.Effects;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Windows.Data.Json;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using Windows.UI.Xaml;
@@ -31,6 +32,7 @@ namespace TestXboxGameBar.Controls
         private const string LastKillAssetKey = "last_kill";
         private const int FrameSequenceFps = 60;
         private const double TargetPlaybackDurationSeconds = 77.0 / FrameSequenceFps;
+        private const int LoadingIndicatorDelayMs = 250;
         private const int MaxCachedFrameWidth = 400;
         private const int MaxCachedFrameHeight = 300;
         private static double _brightnessBoost;
@@ -44,10 +46,6 @@ namespace TestXboxGameBar.Controls
         private SpriteMetadata _currentMetadata;
         private IReadOnlyList<SpriteSheetSegment> _currentSheets;
         private SpriteSheetSegment _currentSheet;
-        private CanvasBitmap _renderEffectSource;
-        private ICanvasImage _renderEffectImage;
-        private double _renderEffectBrightness = -1;
-        private double _renderEffectContrast = -1;
         private static Task _startupPreloadTask;
         private static Task _preloadTask;
         private int _currentFrame;
@@ -120,6 +118,9 @@ namespace TestXboxGameBar.Controls
 
             _brightnessBoost = normalizedBrightness;
             _contrastBoost = normalizedContrast;
+            ClearSheetCache();
+            _startupPreloadTask = null;
+            _preloadTask = null;
         }
 
         private async void PlayInternal(Func<IProgress<int>, Task<AnimationAsset>> assetLoader)
@@ -136,7 +137,7 @@ namespace TestXboxGameBar.Controls
 
             try
             {
-                ShowLoadingProgress(0);
+                _ = ShowLoadingProgressIfStillLoadingAsync(token, progress);
                 AnimationAsset asset = await assetLoader(progress);
 
                 if (token != _playToken)
@@ -234,11 +235,8 @@ namespace TestXboxGameBar.Controls
                 FourKillRemasterAssetKey,
                 FiveKillRemasterAssetKey,
                 SixKillRemasterAssetKey,
-                HeadshotAssetKey,
                 GoldHeadshotAssetKey,
-                FirstKillAssetKey,
-                KnifeKillAssetKey,
-                LastKillAssetKey
+                HeadshotAssetKey
             };
 
             foreach (string assetKey in extraAssets)
@@ -352,7 +350,6 @@ namespace TestXboxGameBar.Controls
                 }
 
                 CanvasBitmap bitmap = await LoadSheetBitmapAsync(fileName);
-
                 segments.Add(new SpriteSheetSegment
                 {
                     Image = bitmap,
@@ -374,6 +371,20 @@ namespace TestXboxGameBar.Controls
             return segments;
         }
 
+        private async Task ShowLoadingProgressIfStillLoadingAsync(int token, IProgress<int> progress)
+        {
+            await Task.Delay(LoadingIndicatorDelayMs);
+            if (token == _playToken)
+            {
+                progress?.Report(0);
+            }
+        }
+
+        private static void ClearSheetCache()
+        {
+            SheetCache.Clear();
+        }
+
         private static async Task<CanvasBitmap> LoadSheetBitmapAsync(string fileName)
         {
             var uri = new Uri($"ms-appx:///Assets/KillConfirmSheets/{fileName}");
@@ -381,8 +392,81 @@ namespace TestXboxGameBar.Controls
 
             using (IRandomAccessStream stream = await file.OpenReadAsync())
             {
-                return await CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), stream);
+                BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+                PixelDataProvider pixels = await decoder.GetPixelDataAsync(
+                    BitmapPixelFormat.Bgra8,
+                    BitmapAlphaMode.Premultiplied,
+                    new BitmapTransform(),
+                    ExifOrientationMode.IgnoreExifOrientation,
+                    ColorManagementMode.DoNotColorManage);
+
+                byte[] data = pixels.DetachPixelData();
+                ApplyColorBoost(data);
+                return CanvasBitmap.CreateFromBytes(
+                    CanvasDevice.GetSharedDevice(),
+                    data,
+                    (int)decoder.PixelWidth,
+                    (int)decoder.PixelHeight,
+                    Windows.Graphics.DirectX.DirectXPixelFormat.B8G8R8A8UIntNormalized);
             }
+        }
+
+        private void OnSpriteCanvasDraw(CanvasControl sender, CanvasDrawEventArgs args)
+        {
+            if (_currentMetadata == null || _currentSheet == null || _currentSheet.Image == null)
+            {
+                return;
+            }
+
+            int localFrame = _currentFrame - _currentSheet.StartFrame;
+            if (localFrame < 0 || localFrame >= _currentSheet.Frames)
+            {
+                return;
+            }
+
+            int col = localFrame % _currentSheet.Cols;
+            int row = localFrame / _currentSheet.Cols;
+            var sourceRect = new Rect(
+                col * _currentMetadata.FrameWidth,
+                row * _currentMetadata.FrameHeight,
+                _currentMetadata.FrameWidth,
+                _currentMetadata.FrameHeight);
+            var targetRect = new Rect(0, 0, _currentMetadata.FrameWidth, _currentMetadata.FrameHeight);
+
+            args.DrawingSession.DrawImage(_currentSheet.Image, targetRect, sourceRect);
+        }
+
+        private void ShowSheetFrame(int frame)
+        {
+            if (_currentSheets == null)
+            {
+                return;
+            }
+
+            SpriteSheetSegment sheet = _currentSheets.FirstOrDefault(value =>
+                frame >= value.StartFrame && frame < value.StartFrame + value.Frames);
+            if (sheet == null)
+            {
+                return;
+            }
+
+            if (!ReferenceEquals(_currentSheet, sheet))
+            {
+                _currentSheet = sheet;
+            }
+
+            SpriteCanvas.Invalidate();
+        }
+
+        private sealed class SpriteSheetSegment
+        {
+            public CanvasBitmap Image { get; set; }
+            public int StartFrame { get; set; }
+            public int Frames { get; set; }
+            public int Cols { get; set; }
+            public int Rows { get; set; }
+            public int Width { get; set; }
+            public int Height { get; set; }
         }
 
         private void ShowLoadingProgress(int percent)
@@ -448,96 +532,69 @@ namespace TestXboxGameBar.Controls
             ShowSheetFrame(frame);
         }
 
-        private void ShowSheetFrame(int frame)
+        private static void ApplyColorBoost(byte[] pixelData)
         {
-            SpriteSheetSegment sheet = _currentSheets.FirstOrDefault(value =>
-                frame >= value.StartFrame && frame < value.StartFrame + value.Frames);
-            if (sheet == null)
+            if (pixelData == null || pixelData.Length < 4)
             {
                 return;
             }
 
-            int localFrame = frame - sheet.StartFrame;
-            int col = localFrame % sheet.Cols;
-            int row = localFrame / sheet.Cols;
-
-            if (!ReferenceEquals(_currentSheet, sheet))
-            {
-                _currentSheet = sheet;
-                _renderEffectSource = null;
-                _renderEffectImage = null;
-            }
-
-            SpriteCanvas.Invalidate();
-        }
-
-        private void OnSpriteCanvasDraw(CanvasControl sender, CanvasDrawEventArgs args)
-        {
-            if (_currentMetadata == null || _currentSheet == null || _currentSheet.Image == null)
-            {
-                return;
-            }
-
-            int localFrame = _currentFrame - _currentSheet.StartFrame;
-            if (localFrame < 0 || localFrame >= _currentSheet.Frames)
-            {
-                return;
-            }
-
-            int col = localFrame % _currentSheet.Cols;
-            int row = localFrame / _currentSheet.Cols;
-            var sourceRect = new Rect(
-                col * _currentMetadata.FrameWidth,
-                row * _currentMetadata.FrameHeight,
-                _currentMetadata.FrameWidth,
-                _currentMetadata.FrameHeight);
-            var targetRect = new Rect(0, 0, _currentMetadata.FrameWidth, _currentMetadata.FrameHeight);
-
-            args.DrawingSession.DrawImage(GetRenderImage(_currentSheet.Image), targetRect, sourceRect);
-        }
-
-        private ICanvasImage GetRenderImage(CanvasBitmap source)
-        {
-            if (ReferenceEquals(_renderEffectSource, source)
-                && _renderEffectImage != null
-                && Math.Abs(_renderEffectBrightness - _brightnessBoost) < 0.0001
-                && Math.Abs(_renderEffectContrast - _contrastBoost) < 0.0001)
-            {
-                return _renderEffectImage;
-            }
-
-            _renderEffectSource = source;
-            _renderEffectBrightness = _brightnessBoost;
-            _renderEffectContrast = _contrastBoost;
-            _renderEffectImage = BuildRenderEffect(source);
-            return _renderEffectImage;
-        }
-
-        private static ICanvasImage BuildRenderEffect(ICanvasImage source)
-        {
-            ICanvasImage image = source;
-            double contrastBoost = _contrastBoost;
             double brightnessBoost = _brightnessBoost;
+            double contrastBoost = _contrastBoost;
+            if (brightnessBoost <= 0 && contrastBoost <= 0)
+            {
+                return;
+            }
+
+            for (int index = 0; index <= pixelData.Length - 4; index += 4)
+            {
+                byte alpha = pixelData[index + 3];
+                if (alpha == 0)
+                {
+                    continue;
+                }
+
+                pixelData[index] = AdjustChannel(pixelData[index], alpha, brightnessBoost, contrastBoost);
+                pixelData[index + 1] = AdjustChannel(pixelData[index + 1], alpha, brightnessBoost, contrastBoost);
+                pixelData[index + 2] = AdjustChannel(pixelData[index + 2], alpha, brightnessBoost, contrastBoost);
+            }
+        }
+
+        private static byte AdjustChannel(byte premultipliedChannel, byte alpha, double brightnessBoost, double contrastBoost)
+        {
+            double normalizedAlpha = alpha / 255.0;
+            if (normalizedAlpha <= 0)
+            {
+                return 0;
+            }
+
+            double unpremultiplied = Math.Min(1.0, premultipliedChannel / (255.0 * normalizedAlpha));
+            if (brightnessBoost > 0)
+            {
+                double gamma = 1.0 - (brightnessBoost * 0.4);
+                unpremultiplied = Math.Pow(unpremultiplied, gamma);
+            }
 
             if (contrastBoost > 0)
             {
-                image = new ContrastEffect
-                {
-                    Source = image,
-                    Contrast = (float)Math.Min(1.0, contrastBoost * 1.35)
-                };
+                double contrastFactor = 1.0 + (contrastBoost * 1.35);
+                unpremultiplied = ((unpremultiplied - 0.5) * contrastFactor) + 0.5;
             }
 
-            if (brightnessBoost > 0)
+            unpremultiplied = Math.Max(0.0, Math.Min(1.0, unpremultiplied));
+            double repremultiplied = unpremultiplied * normalizedAlpha * 255.0;
+
+            if (repremultiplied <= 0)
             {
-                image = new ExposureEffect
-                {
-                    Source = image,
-                    Exposure = (float)(brightnessBoost * 1.25)
-                };
+                return 0;
             }
 
-            return image;
+            if (repremultiplied >= alpha)
+            {
+                return alpha;
+            }
+
+            return (byte)Math.Round(repremultiplied);
         }
 
         private sealed class SpriteMetadata
@@ -561,17 +618,6 @@ namespace TestXboxGameBar.Controls
 
             public SpriteMetadata Metadata { get; }
             public IReadOnlyList<SpriteSheetSegment> Sheets { get; }
-        }
-
-        private sealed class SpriteSheetSegment
-        {
-            public CanvasBitmap Image { get; set; }
-            public int StartFrame { get; set; }
-            public int Frames { get; set; }
-            public int Cols { get; set; }
-            public int Rows { get; set; }
-            public int Width { get; set; }
-            public int Height { get; set; }
         }
 
     }

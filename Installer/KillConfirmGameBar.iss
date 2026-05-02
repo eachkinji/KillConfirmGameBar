@@ -52,7 +52,7 @@ Source: "{#TransferRoot}\*"; DestDir: "{app}\Payload"; Flags: ignoreversion recu
 Name: "{group}\{cm:OpenXboxGameBar}"; Filename: "explorer.exe"; Parameters: "ms-gamebar:"
 
 [UninstallRun]
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-Process -Name cskillconfirm,TestXboxGameBar,KillConfirmOverlay,KillConfirmGameBar -ErrorAction SilentlyContinue | Stop-Process -Force; Get-AppxPackage KillConfirmGameBar.Overlay | Remove-AppxPackage -ErrorAction SilentlyContinue; CheckNetIsolation.exe LoopbackExempt -d -n=\""KillConfirmGameBar.Overlay_5jgcw66eyez0m\"" 2>$null"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveAppxPackage"
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-Process -Name cskillconfirm,TestXboxGameBar,KillConfirmOverlay,KillConfirmGameBar,GameBar,GameBarFTServer,GameBarPresenceWriter -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Milliseconds 800; Get-AppxPackage KillConfirmGameBar.Overlay | Remove-AppxPackage -ErrorAction SilentlyContinue; CheckNetIsolation.exe LoopbackExempt -d -n=\""KillConfirmGameBar.Overlay_5jgcw66eyez0m\"" 2>$null"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveAppxPackage"
 
 [Code]
 procedure CurStepChanged(CurStep: TSetupStep);

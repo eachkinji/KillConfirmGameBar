@@ -38,7 +38,10 @@ $KillConfirmProcessNames = @(
     "cskillconfirm",
     "TestXboxGameBar",
     "KillConfirmOverlay",
-    "KillConfirmGameBar"
+    "KillConfirmGameBar",
+    "GameBar",
+    "GameBarFTServer",
+    "GameBarPresenceWriter"
 )
 
 Get-Process -Name $KillConfirmProcessNames -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -109,9 +112,13 @@ function Install-OverlayPackage {
         "cskillconfirm",
         "TestXboxGameBar",
         "KillConfirmOverlay",
-        "KillConfirmGameBar"
+        "KillConfirmGameBar",
+        "GameBar",
+        "GameBarFTServer",
+        "GameBarPresenceWriter"
     )
     Get-Process -Name $processNames -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Milliseconds 800
 
     $msix = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.msix" -File | Select-Object -First 1
     if (-not $msix) {
