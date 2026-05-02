@@ -44,6 +44,9 @@ namespace TestXboxGameBar
         private const string LastKillAssetKey = "last_kill";
         private const string BrightnessSettingKey = "AnimationBrightness";
         private const string ContrastSettingKey = "AnimationContrast";
+        private const string AnimationPlacementSettingKey = "AnimationPlacement";
+        private const string AnimationOffsetSettingKey = "AnimationOffset";
+        private const string AnimationScaleSettingKey = "AnimationScale";
         private const string VoicePackSettingKey = "VoicePack";
         private const string CsInstallFolderAccessToken = "CsInstallFolder";
         private const string CsInstallFolderTokenSettingKey = "CsInstallFolderToken";
@@ -162,6 +165,7 @@ namespace TestXboxGameBar
             }
 
             LoadVisualAdjustmentSettings();
+            LoadAnimationPlacementSettings();
             LoadVoicePackSetting();
             _controlPanelStateTimer.Start();
 
@@ -227,6 +231,7 @@ namespace TestXboxGameBar
             _animationOffset = 0;
             _animationPlacement = AnimationPlacementMode.Center;
             ApplyAnimationOffset();
+            SaveAnimationPlacementSettings();
 
             if (_widget == null)
             {
@@ -244,8 +249,9 @@ namespace TestXboxGameBar
 
         private void OnLowerThirdClick(object sender, RoutedEventArgs e)
         {
-            _animationPlacement = AnimationPlacementMode.LowerThird;
+            _animationPlacement = AnimationPlacementMode.Bottom;
             ApplyAnimationOffset();
+            SaveAnimationPlacementSettings();
         }
 
         private void OnMoveUpClick(object sender, RoutedEventArgs e)
@@ -1190,6 +1196,7 @@ namespace TestXboxGameBar
             _animationPlacement = AnimationPlacementMode.Manual;
             _animationOffset = Math.Max(-maxOffset, Math.Min(maxOffset, currentOffset + delta));
             ApplyAnimationOffset();
+            SaveAnimationPlacementSettings();
         }
 
         private void ApplyAnimationOffset()
@@ -1201,6 +1208,7 @@ namespace TestXboxGameBar
         {
             _animationScale *= factor;
             ApplyAnimationTransform();
+            SaveAnimationPlacementSettings();
         }
 
         private void ApplyAnimationTransform()
@@ -1212,9 +1220,10 @@ namespace TestXboxGameBar
 
         private void OnAnimationLayerSizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (_animationPlacement == AnimationPlacementMode.LowerThird)
+            if (_animationPlacement == AnimationPlacementMode.Bottom)
             {
                 ApplyAnimationOffset();
+                SaveAnimationPlacementSettings();
             }
         }
 
@@ -1222,8 +1231,8 @@ namespace TestXboxGameBar
         {
             switch (_animationPlacement)
             {
-                case AnimationPlacementMode.LowerThird:
-                    return GetLowerThirdOffset();
+                case AnimationPlacementMode.Bottom:
+                    return GetBottomOffset();
                 case AnimationPlacementMode.Center:
                     return 0;
                 default:
@@ -1231,15 +1240,9 @@ namespace TestXboxGameBar
             }
         }
 
-        private double GetLowerThirdOffset()
+        private double GetBottomOffset()
         {
-            double layerHeight = AnimationLayer.ActualHeight;
-            if (layerHeight <= 0)
-            {
-                layerHeight = DefaultWidgetSize.Height;
-            }
-
-            return layerHeight / 6.0;
+            return GetMaxAnimationOffset();
         }
 
         private double GetMaxAnimationOffset()
@@ -1504,6 +1507,53 @@ namespace TestXboxGameBar
             }
         }
 
+        private void LoadAnimationPlacementSettings()
+        {
+            ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
+            string placement = localSettings.Values[AnimationPlacementSettingKey] as string;
+
+            if (string.Equals(placement, nameof(AnimationPlacementMode.Bottom), StringComparison.OrdinalIgnoreCase))
+            {
+                _animationPlacement = AnimationPlacementMode.Bottom;
+            }
+            else if (string.Equals(placement, nameof(AnimationPlacementMode.Manual), StringComparison.OrdinalIgnoreCase))
+            {
+                _animationPlacement = AnimationPlacementMode.Manual;
+            }
+            else
+            {
+                _animationPlacement = AnimationPlacementMode.Center;
+            }
+
+            _animationOffset = ReadDoubleSetting(localSettings, AnimationOffsetSettingKey, 0);
+            _animationScale = Math.Max(0.35, Math.Min(3.0, ReadDoubleSetting(localSettings, AnimationScaleSettingKey, 1.0)));
+            ApplyAnimationTransform();
+        }
+
+        private void SaveAnimationPlacementSettings()
+        {
+            ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
+            localSettings.Values[AnimationPlacementSettingKey] = _animationPlacement.ToString();
+            localSettings.Values[AnimationOffsetSettingKey] = _animationOffset;
+            localSettings.Values[AnimationScaleSettingKey] = _animationScale;
+        }
+
+        private static double ReadDoubleSetting(ApplicationDataContainer settings, string key, double fallback)
+        {
+            object rawValue = settings.Values[key];
+            switch (rawValue)
+            {
+                case double doubleValue:
+                    return doubleValue;
+                case float floatValue:
+                    return floatValue;
+                case int intValue:
+                    return intValue;
+                default:
+                    return fallback;
+            }
+        }
+
         private static string GetDisplayVersion()
         {
             try
@@ -1550,7 +1600,7 @@ namespace TestXboxGameBar
         {
             Center,
             Manual,
-            LowerThird
+            Bottom
         }
 
         private enum CfgDetectionState

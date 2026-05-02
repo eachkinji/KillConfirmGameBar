@@ -13,7 +13,7 @@ use crate::util::state::AppState;
 const KNIFE_SOUND_GAIN: f32 = 0.16;
 const FIRST_AND_LAST_SOUND_GAIN: f32 = 0.16;
 const HEADSHOT_SOUND_GAIN: f32 = 1.8;
-const MAX_STREAK_EVENT_GAIN: f32 = 1.35;
+const MAX_STREAK_EVENT_GAIN: f32 = 1.5;
 
 async fn add_file_to_mixer(file_name: &str, mixer: &mixer::Mixer, event_gain: f32) -> Result<()> {
     service_log(&format!("audio opening file: {file_name}"));

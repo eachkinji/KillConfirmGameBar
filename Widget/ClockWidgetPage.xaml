@@ -549,7 +549,7 @@
                         Grid.Column="3"
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnLowerThirdClick"
-                        ToolTipService.ToolTip="Place icon at lower third">
+                        ToolTipService.ToolTip="Place icon at bottom">
                         <PathIcon Data="M8,2 L13,7 L10,7 L10,10 L6,10 L6,7 L3,7 Z M2,12 L14,12 L14,14 L2,14 Z" />
                     </Button>
 
