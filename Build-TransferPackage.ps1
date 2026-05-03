@@ -109,6 +109,7 @@ $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $OverlayRoot = Join-Path $ScriptRoot "OverlayPackage"
 $PackageFamilyName = "KillConfirmGameBar.Overlay_5jgcw66eyez0m"
 $LogPath = Join-Path $env:TEMP "KillConfirmGameBar_Install.log"
+$RuntimeLogRoot = Join-Path $env:LOCALAPPDATA "Packages\$PackageFamilyName\LocalState"
 
 function Write-InstallLog {
     param([string]$Message)
@@ -234,8 +235,13 @@ function Add-AppxPackageCompat {
     if ($DeferWhenInUse -and $command.Parameters.ContainsKey("DeferRegistrationWhenPackagesAreInUse")) {
         $addPackageParams.DeferRegistrationWhenPackagesAreInUse = $true
     }
+    Write-InstallLog "Add-AppxPackage path: $PackagePath"
+    Write-InstallLog ("Add-AppxPackage switches: ForceUpdateFromAnyVersion={0}; DeferRegistrationWhenPackagesAreInUse={1}" -f `
+        $addPackageParams.ContainsKey("ForceUpdateFromAnyVersion"), `
+        $addPackageParams.ContainsKey("DeferRegistrationWhenPackagesAreInUse"))
     try {
         Add-AppxPackage @addPackageParams
+        Write-InstallLog "Add-AppxPackage succeeded: $(Split-Path -Leaf $PackagePath)"
     }
     catch {
         Write-AppxFailureDetails -ErrorRecord $_
@@ -244,6 +250,13 @@ function Add-AppxPackageCompat {
 }
 
 function Install-OverlayPackage {
+    Write-InstallLog "Install script root: $ScriptRoot"
+    Write-InstallLog "Overlay root: $OverlayRoot"
+    Write-InstallLog "Runtime log folder after launch: $RuntimeLogRoot"
+    Write-InstallLog "PowerShell: $($PSVersionTable.PSVersion)"
+    Write-InstallLog "OS: $([System.Environment]::OSVersion.VersionString)"
+    Write-InstallLog "Process bitness: Is64BitProcess=$([System.Environment]::Is64BitProcess); Is64BitOS=$([System.Environment]::Is64BitOperatingSystem)"
+
     if (-not (Test-Path $OverlayRoot)) {
         throw "OverlayPackage was not found under $ScriptRoot"
     }
@@ -257,7 +270,14 @@ function Install-OverlayPackage {
         "GameBarFTServer",
         "GameBarPresenceWriter"
     )
-    Get-Process -Name $processNames -ErrorAction SilentlyContinue | Stop-Process -Force
+    $runningProcesses = @(Get-Process -Name $processNames -ErrorAction SilentlyContinue)
+    if ($runningProcesses.Count -gt 0) {
+        Write-InstallLog ("Stopping running processes: {0}" -f (($runningProcesses | ForEach-Object { "$($_.ProcessName)#$($_.Id)" }) -join ", "))
+        $runningProcesses | Stop-Process -Force
+    }
+    else {
+        Write-InstallLog "No Kill Confirm/Game Bar processes needed stopping."
+    }
     Start-Sleep -Milliseconds 800
 
     $msix = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.msix" -File | Select-Object -First 1
@@ -267,9 +287,10 @@ function Install-OverlayPackage {
 
     $cert = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.cer" -File | Select-Object -First 1
     if ($cert) {
-        Write-InstallLog "Installing package certificate..."
-        Import-Certificate -FilePath $cert.FullName -CertStoreLocation "Cert:\LocalMachine\TrustedPeople" | Out-Null
-        Import-Certificate -FilePath $cert.FullName -CertStoreLocation "Cert:\LocalMachine\Root" | Out-Null
+        Write-InstallLog "Installing package certificate: $($cert.FullName)"
+        $trustedPeopleCert = Import-Certificate -FilePath $cert.FullName -CertStoreLocation "Cert:\LocalMachine\TrustedPeople"
+        $rootCert = Import-Certificate -FilePath $cert.FullName -CertStoreLocation "Cert:\LocalMachine\Root"
+        Write-InstallLog "Certificate thumbprints: TrustedPeople=$($trustedPeopleCert.Thumbprint); Root=$($rootCert.Thumbprint)"
     }
     else {
         Write-InstallLog "No package certificate found beside MSIX."
@@ -280,9 +301,15 @@ function Install-OverlayPackage {
     if (Test-Path $dependencyRoot) {
         $dependencies = @(Get-ChildItem -LiteralPath $dependencyRoot -Include "*.appx", "*.msix" -File -Recurse | ForEach-Object { $_.FullName })
     }
+    Write-InstallLog "Dependency root: $dependencyRoot"
+    Write-InstallLog "Dependency count: $($dependencies.Count)"
 
     foreach ($dependency in $dependencies) {
         $dependencyName = Split-Path -Leaf $dependency
+        $identity = Get-AppxIdentityFromPackageFile -PackagePath $dependency
+        if ($identity) {
+            Write-InstallLog "Dependency identity: $dependencyName => $($identity.Name) $($identity.Version)"
+        }
         if (Test-AppxPackageInstalled -PackagePath $dependency) {
             Write-InstallLog "Dependency already installed: $dependencyName"
             continue
@@ -293,6 +320,10 @@ function Install-OverlayPackage {
     }
 
     Write-InstallLog "Installing MSIX package: $($msix.Name)"
+    $msixIdentity = Get-AppxIdentityFromPackageFile -PackagePath $msix.FullName
+    if ($msixIdentity) {
+        Write-InstallLog "MSIX identity: $($msixIdentity.Name) $($msixIdentity.Version)"
+    }
     Add-AppxPackageCompat -PackagePath $msix.FullName -ForceUpdate -DeferWhenInUse
 }
 
@@ -303,6 +334,9 @@ function Test-OverlayPackageInstalled {
     }
 
     Write-InstallLog "MSIX package registered: $($package.PackageFamilyName)"
+    Write-InstallLog "Package full name: $($package.PackageFullName)"
+    Write-InstallLog "Install location: $($package.InstallLocation)"
+    Write-InstallLog "Runtime logs: $RuntimeLogRoot"
 }
 
 function Get-SteamLibraryRoots {

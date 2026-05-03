@@ -10,10 +10,12 @@ use axum::{
 };
 use std::{
     env,
-    path::Path,
+    fs::{self, OpenOptions},
+    io::Write,
+    path::{Path, PathBuf},
     sync::atomic::AtomicU64,
     sync::Arc,
-    time::Duration,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::sync::{RwLock, broadcast};
 use tower_http::{timeout::TimeoutLayer, trace::TraceLayer};
@@ -191,5 +193,58 @@ fn bootstrap_log(message: &str) {
     append_trace_log("bootstrap.log", message);
 }
 
-fn append_trace_log(_file_name: &str, _message: &str) {
+fn append_trace_log(file_name: &str, message: &str) {
+    let Some(log_path) = trace_log_path(file_name) else {
+        return;
+    };
+
+    if let Some(parent) = log_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+
+    rotate_trace_log_if_needed(&log_path);
+
+    let timestamp_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    let pid = std::process::id();
+    let line = format!("[unix_ms={timestamp_ms}] pid={pid} {message}\n");
+
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&log_path) {
+        let _ = file.write_all(line.as_bytes());
+    }
+}
+
+fn trace_log_path(file_name: &str) -> Option<PathBuf> {
+    const PACKAGE_FAMILY_NAME: &str = "KillConfirmGameBar.Overlay_5jgcw66eyez0m";
+
+    if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+        return Some(
+            PathBuf::from(local_app_data)
+                .join("Packages")
+                .join(PACKAGE_FAMILY_NAME)
+                .join("LocalState")
+                .join(file_name),
+        );
+    }
+
+    env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(|parent| parent.join(file_name)))
+}
+
+fn rotate_trace_log_if_needed(log_path: &Path) {
+    const MAX_LOG_BYTES: u64 = 512 * 1024;
+
+    let Ok(metadata) = fs::metadata(log_path) else {
+        return;
+    };
+    if metadata.len() <= MAX_LOG_BYTES {
+        return;
+    }
+
+    let old_path = log_path.with_extension("log.old");
+    let _ = fs::remove_file(&old_path);
+    let _ = fs::rename(log_path, old_path);
 }

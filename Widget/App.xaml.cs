@@ -1,7 +1,9 @@
 using System;
+using System.IO;
 using Microsoft.Gaming.XboxGameBar;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.Storage;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -13,6 +15,8 @@ namespace TestXboxGameBar
     sealed partial class App : Application
     {
         private const string WidgetId = "KillConfirmWidget";
+        private const string RuntimeLogFileName = "gamebar-widget.log";
+        private const long MaxRuntimeLogBytes = 512 * 1024;
 
         private XboxGameBarWidget _clockWidget;
 
@@ -176,6 +180,48 @@ namespace TestXboxGameBar
 
         internal static void Log(string message)
         {
+            try
+            {
+                string folderPath = ApplicationData.Current.LocalFolder.Path;
+                Directory.CreateDirectory(folderPath);
+
+                string logPath = Path.Combine(folderPath, RuntimeLogFileName);
+                RotateLogIfNeeded(logPath);
+
+                string line = string.Format(
+                    "[{0:yyyy-MM-dd HH:mm:ss.fff}] pid={1} {2}{3}",
+                    DateTimeOffset.Now,
+                    Environment.CurrentManagedThreadId,
+                    message,
+                    Environment.NewLine);
+                File.AppendAllText(logPath, line);
+            }
+            catch
+            {
+            }
+        }
+
+        private static void RotateLogIfNeeded(string logPath)
+        {
+            try
+            {
+                var info = new FileInfo(logPath);
+                if (!info.Exists || info.Length <= MaxRuntimeLogBytes)
+                {
+                    return;
+                }
+
+                string oldPath = logPath + ".old";
+                if (File.Exists(oldPath))
+                {
+                    File.Delete(oldPath);
+                }
+
+                File.Move(logPath, oldPath);
+            }
+            catch
+            {
+            }
         }
     }
 }
