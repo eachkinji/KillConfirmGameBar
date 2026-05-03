@@ -1,3 +1,7 @@
+链接：https://pan.quark.cn/s/1f3cfbcf8d5f?pwd=7Twv
+
+提取码：7Twv
+
 # KillConfirmGameBar
 
 ## Roadmap
