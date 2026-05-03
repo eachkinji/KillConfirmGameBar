@@ -13,6 +13,7 @@ use std::{
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
+    process::Command,
     sync::atomic::AtomicU64,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -80,6 +81,17 @@ async fn run() -> Result<()> {
     let sanitized_args = Args::sanitized_runtime_args();
     bootstrap_log(&format!("sanitized args: {:?}", sanitized_args));
     let args = Args::parse_runtime();
+
+    if args.open_logs {
+        open_runtime_log_folder();
+        return Ok(());
+    }
+
+    if let Some(port) = args.free_port {
+        free_local_port(port).with_context(|| format!("failed to free port {port}"))?;
+        return Ok(());
+    }
+
     normalize_working_directory().context("failed to locate runtime assets")?;
     service_log(&format!(
         "working directory: {}",
@@ -172,6 +184,94 @@ fn service_log(message: &str) {
     append_trace_log("service.log", message);
 }
 
+fn open_runtime_log_folder() {
+    let folder = runtime_log_dir();
+    if let Err(error) = fs::create_dir_all(&folder) {
+        service_log(&format!(
+            "open logs failed to create folder {}: {error}",
+            folder.display()
+        ));
+        return;
+    }
+
+    service_log(&format!("opening runtime log folder: {}", folder.display()));
+    if let Err(error) = Command::new("explorer.exe").arg(&folder).spawn() {
+        service_log(&format!("failed to open runtime log folder: {error}"));
+    }
+}
+
+fn free_local_port(port: u16) -> Result<()> {
+    service_log(&format!("free-port requested for 127.0.0.1:{port}"));
+    let pids = find_local_port_pids(port)?;
+
+    if pids.is_empty() {
+        service_log(&format!("free-port: no process owns port {port}"));
+        return Ok(());
+    }
+
+    let current_pid = std::process::id();
+    for pid in pids {
+        if pid == current_pid {
+            service_log(&format!("free-port: skipping helper pid {pid}"));
+            continue;
+        }
+
+        service_log(&format!("free-port: terminating pid {pid}"));
+        let output = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/F"])
+            .output()
+            .with_context(|| format!("failed to run taskkill for pid {pid}"))?;
+
+        service_log(&format!(
+            "free-port: taskkill pid {pid} exit={:?} stdout={} stderr={}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout).trim(),
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+
+    Ok(())
+}
+
+fn find_local_port_pids(port: u16) -> Result<Vec<u32>> {
+    let output = Command::new("netstat")
+        .args(["-ano", "-p", "tcp"])
+        .output()
+        .context("failed to run netstat")?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let port_suffix = format!(":{port}");
+    let mut pids = Vec::new();
+
+    for line in stdout.lines() {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 5 || !parts[0].eq_ignore_ascii_case("tcp") {
+            continue;
+        }
+
+        let local_address = parts[1].to_ascii_lowercase();
+        if !(local_address == format!("127.0.0.1:{port}")
+            || local_address == format!("0.0.0.0:{port}")
+            || local_address == format!("[::1]:{port}")
+            || local_address == format!("[::]:{port}")
+            || local_address.ends_with(&port_suffix))
+        {
+            continue;
+        }
+
+        if let Some(pid_text) = parts.last() {
+            if let Ok(pid) = pid_text.parse::<u32>() {
+                if !pids.contains(&pid) {
+                    pids.push(pid);
+                }
+            }
+        }
+    }
+
+    service_log(&format!("free-port: pids for port {port}: {pids:?}"));
+    Ok(pids)
+}
+
 fn normalize_working_directory() -> Result<()> {
     if Path::new("sounds").is_dir() {
         return Ok(());
@@ -217,21 +317,23 @@ fn append_trace_log(file_name: &str, message: &str) {
 }
 
 fn trace_log_path(file_name: &str) -> Option<PathBuf> {
+    Some(runtime_log_dir().join(file_name))
+}
+
+fn runtime_log_dir() -> PathBuf {
     const PACKAGE_FAMILY_NAME: &str = "KillConfirmGameBar.Overlay_5jgcw66eyez0m";
 
     if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
-        return Some(
-            PathBuf::from(local_app_data)
-                .join("Packages")
-                .join(PACKAGE_FAMILY_NAME)
-                .join("LocalState")
-                .join(file_name),
-        );
+        return PathBuf::from(local_app_data)
+            .join("Packages")
+            .join(PACKAGE_FAMILY_NAME)
+            .join("LocalState");
     }
 
     env::current_exe()
         .ok()
-        .and_then(|path| path.parent().map(|parent| parent.join(file_name)))
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 fn rotate_trace_log_if_needed(log_path: &Path) {

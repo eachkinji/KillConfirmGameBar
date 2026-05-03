@@ -11,7 +11,7 @@ pub struct Args {
     #[arg(short, long, default_value = "false")]
     pub list_devices: bool,
     /// sound preset to use
-    #[arg(short, long, default_value = "crossfire")]
+    #[arg(short, long, default_value = "crossfire_swat_gr")]
     pub preset: String,
     /// play sound only for a specific steamid
     #[arg(long)]
@@ -25,6 +25,14 @@ pub struct Args {
     /// list all sound presets
     #[arg(short = 'L', long, default_value = "false")]
     pub list_presets: bool,
+
+    /// close the process that owns a local TCP port, then exit
+    #[arg(long)]
+    pub free_port: Option<u16>,
+
+    /// open the package runtime log folder, then exit
+    #[arg(long, default_value = "false")]
+    pub open_logs: bool,
 }
 
 impl Args {

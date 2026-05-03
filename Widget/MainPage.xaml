@@ -196,7 +196,7 @@
                                         <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#BFD0E3" Text="VOICE" />
                                     </Border>
                                     <Border Grid.Column="1" Height="28" Background="#223040" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
-                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" Foreground="#D8E7F5" Text="cf / cffhd / cfsex" />
+                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" Foreground="#D8E7F5" Text="swat / tiger / cfsex" />
                                     </Border>
                                 </Grid>
 

@@ -78,16 +78,32 @@ pub struct SoundPackOption {
 
 const SOUND_PACK_OPTIONS: &[SoundPackOption] = &[
     SoundPackOption {
-        preset: "crossfire",
-        display_name: "cf",
+        preset: "crossfire_swat_gr",
+        display_name: "swat GR",
     },
     SoundPackOption {
-        preset: "crossfire_v_fhd",
-        display_name: "cffhd",
+        preset: "crossfire_swat_bl",
+        display_name: "swat BL",
+    },
+    SoundPackOption {
+        preset: "crossfire_flying_tiger_gr",
+        display_name: "tiger GR",
+    },
+    SoundPackOption {
+        preset: "crossfire_flying_tiger_bl",
+        display_name: "tiger BL",
     },
     SoundPackOption {
         preset: "crossfire_v_sex",
         display_name: "cfsex",
+    },
+    SoundPackOption {
+        preset: "crossfire_women_gr",
+        display_name: "women GR",
+    },
+    SoundPackOption {
+        preset: "crossfire_women_bl",
+        display_name: "women BL",
     },
 ];
 
@@ -207,9 +223,24 @@ pub async fn test_event(
 fn resolve_soundpack_alias(value: &str) -> Option<&'static str> {
     let normalized = value.trim().to_ascii_lowercase();
     match normalized.as_str() {
-        "cf" | "crossfire" => Some("crossfire"),
-        "cffhd" | "cf_fhd" | "crossfire_fhd" | "crossfire_v_fhd" => Some("crossfire_v_fhd"),
+        "cf" | "crossfire" | "swatgr" | "swat_gr" | "crossfire_swat_gr" => {
+            Some("crossfire_swat_gr")
+        }
+        "swatbl" | "swat_bl" | "crossfire_swat_bl" => Some("crossfire_swat_bl"),
+        "cfftgr" | "ftgr" | "tiger_gr" | "flying_tiger_gr" | "crossfire_flying_tiger_gr"
+        | "cffhd" | "cf_fhd" | "crossfire_fhd" | "crossfire_v_fhd" => {
+            Some("crossfire_flying_tiger_gr")
+        }
         "cfsex" | "cf_sex" | "crossfire_sex" | "crossfire_v_sex" => Some("crossfire_v_sex"),
+        "cfftbl" | "ftbl" | "tiger_bl" | "flying_tiger_bl" | "crossfire_flying_tiger_bl" => {
+            Some("crossfire_flying_tiger_bl")
+        }
+        "cwgr" | "women_gr" | "crossfire_women_gr" | "kkgr" | "knifegr" | "knifekill_gr" => {
+            Some("crossfire_women_gr")
+        }
+        "cwbl" | "women_bl" | "crossfire_women_bl" | "kkbl" | "knifebl" | "knifekill_bl" => {
+            Some("crossfire_women_bl")
+        }
         _ => None,
     }
 }

@@ -18,7 +18,6 @@ if (-not $SourceAssetsRoot) {
     $SourceAssetsRoot = Join-Path $Root "SourceAssets"
 }
 $AnimationSourceRoot = Join-Path $SourceAssetsRoot "Animations"
-$AudioSourceRoot = Join-Path $SourceAssetsRoot "Audio"
 $SoundPackSourceRoot = Join-Path $SourceAssetsRoot "SoundPacks"
 $ServiceRoot = Join-Path $Root "KillConfirmService"
 $WidgetRoot = Join-Path $Root "Widget"
@@ -107,36 +106,6 @@ if (Test-Path $ServiceSoundsRoot) {
     Remove-Item -LiteralPath $ServiceSoundsRoot -Recurse -Force
 }
 Copy-Item -LiteralPath $SoundPackSourceRoot -Destination $ServiceSoundsRoot -Recurse -Force
-
-$CrossfireSoundRoot = Join-Path $ServiceSoundsRoot "crossfire"
-New-Item -ItemType Directory -Force -Path $CrossfireSoundRoot | Out-Null
-$SharedCrossfireAudioAssets = @(
-    @{ Source = Join-Path $AudioSourceRoot "Knifekill_CT.wav"; Target = "knife.wav" },
-    @{ Source = Join-Path $AudioSourceRoot "firstandlast_CT.wav"; Target = "firstandlast.wav" }
-)
-foreach ($asset in $SharedCrossfireAudioAssets) {
-    if (Test-Path $asset.Source) {
-        Copy-Item -LiteralPath $asset.Source -Destination (Join-Path $CrossfireSoundRoot $asset.Target) -Force
-    }
-}
-
-$CrossfireSharedFiles = @("sound.lua", "common.wav", "knife.wav", "firstandlast.wav")
-$CrossfireVariantRoots = @(
-    (Join-Path $ServiceSoundsRoot "crossfire_v_fhd"),
-    (Join-Path $ServiceSoundsRoot "crossfire_v_sex")
-)
-foreach ($variantRoot in $CrossfireVariantRoots) {
-    if (-not (Test-Path $variantRoot)) {
-        continue
-    }
-
-    foreach ($fileName in $CrossfireSharedFiles) {
-        $sourceFile = Join-Path $CrossfireSoundRoot $fileName
-        if (Test-Path $sourceFile) {
-            Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $variantRoot $fileName) -Force
-        }
-    }
-}
 
 foreach ($asset in $FrameSequenceAssets) {
     $targetAssetRoot = Join-Path $WidgetKillAssetRoot $asset.Target

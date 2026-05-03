@@ -13,6 +13,10 @@ use crate::util::state::AppState;
 const KNIFE_SOUND_GAIN: f32 = 0.16;
 const FIRST_AND_LAST_SOUND_GAIN: f32 = 0.16;
 const HEADSHOT_SOUND_GAIN: f32 = 1.8;
+const COMMON_SOUND_GAIN: f32 = 2.5;
+const FLYING_TIGER_SOUND_GAIN: f32 = 1.8;
+const WOMEN_SPECIAL_SOUND_GAIN: f32 = 1.6;
+const WOMEN_GR_GRENADE_SOUND_GAIN: f32 = 2.1;
 const MAX_STREAK_EVENT_GAIN: f32 = 1.5;
 
 async fn add_file_to_mixer(file_name: &str, mixer: &mixer::Mixer, event_gain: f32) -> Result<()> {
@@ -126,17 +130,52 @@ pub async fn play_audio(
 
 fn resolve_sound_gain(file_name: &str, event_gain: f32) -> f32 {
     let normalized = file_name.replace('\\', "/").to_ascii_lowercase();
+    let should_lower_special_sounds = normalized.contains("/crossfire_v_sex/");
+    let is_flying_tiger_pack = normalized.contains("/crossfire_flying_tiger_gr/")
+        || normalized.contains("/crossfire_flying_tiger_bl/");
+    let is_women_pack = normalized.contains("/crossfire_women_gr/")
+        || normalized.contains("/crossfire_women_bl/");
 
-    if normalized.ends_with("/knife.wav") {
+    if normalized.ends_with("/common.wav") {
+        return COMMON_SOUND_GAIN * event_gain;
+    }
+
+    if normalized.ends_with("/knife.wav") && should_lower_special_sounds {
         return KNIFE_SOUND_GAIN * event_gain;
     }
 
-    if normalized.ends_with("/firstandlast.wav") {
+    if normalized.ends_with("/firstandlast.wav") && should_lower_special_sounds {
         return FIRST_AND_LAST_SOUND_GAIN * event_gain;
     }
 
     if normalized.ends_with("/headshot.wav") {
-        return HEADSHOT_SOUND_GAIN * event_gain;
+        let pack_gain = if is_flying_tiger_pack {
+            FLYING_TIGER_SOUND_GAIN
+        } else if is_women_pack {
+            WOMEN_SPECIAL_SOUND_GAIN
+        } else {
+            1.0
+        };
+
+        return HEADSHOT_SOUND_GAIN * pack_gain * event_gain;
+    }
+
+    if is_flying_tiger_pack {
+        return FLYING_TIGER_SOUND_GAIN * event_gain;
+    }
+
+    if is_women_pack
+        && (normalized.ends_with("/knife.wav") || normalized.ends_with("/grenade.wav"))
+    {
+        let pack_gain = if normalized.contains("/crossfire_women_gr/")
+            && normalized.ends_with("/grenade.wav")
+        {
+            WOMEN_GR_GRENADE_SOUND_GAIN
+        } else {
+            WOMEN_SPECIAL_SOUND_GAIN
+        };
+
+        return pack_gain * event_gain;
     }
 
     event_gain

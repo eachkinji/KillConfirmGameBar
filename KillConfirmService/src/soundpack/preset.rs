@@ -14,7 +14,7 @@ pub struct Preset {
 
 impl Preset {
     /// Load a preset from the sounds directory
-    /// For variants like "crossfire_v_fhd", loads Lua from master "crossfire"
+    /// For variants like "crossfire_v_sex", loads Lua from master "crossfire"
     pub fn load(preset_name: &str) -> Result<Self> {
         // Check if this is a variant (format: master_v_variant)
         let parts: Vec<&str> = preset_name.split("_v_").collect();

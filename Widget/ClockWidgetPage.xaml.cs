@@ -92,6 +92,8 @@ namespace TestXboxGameBar
         private static readonly Uri Cs2RootUri = new Uri("http://127.0.0.1:3000/cs2-root");
         private static readonly TimeSpan ServiceStartupTimeout = TimeSpan.FromSeconds(6);
         private static readonly TimeSpan ServiceStartupPollInterval = TimeSpan.FromMilliseconds(250);
+        private const string FreeServicePortParameterGroupId = "FreeServicePort";
+        private const string OpenRuntimeLogsParameterGroupId = "OpenRuntimeLogs";
         private static readonly SemaphoreSlim ServiceStartupGate = new SemaphoreSlim(1, 1);
         private static readonly IReadOnlyDictionary<string, TestPreset> TestPresets =
             new Dictionary<string, TestPreset>(StringComparer.OrdinalIgnoreCase)
@@ -321,11 +323,43 @@ namespace TestXboxGameBar
         {
             try
             {
-                await Launcher.LaunchFolderAsync(ApplicationData.Current.LocalFolder);
+                bool launched = await TryLaunchFullTrustHelperAsync(OpenRuntimeLogsParameterGroupId);
+                if (!launched)
+                {
+                    await Launcher.LaunchFolderAsync(ApplicationData.Current.LocalFolder);
+                }
             }
             catch (Exception ex)
             {
                 App.Log("Failed to open log folder: " + ex);
+            }
+        }
+
+        private async void OnFreePortClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                App.Log("Free port requested from widget.");
+                ServiceDiagnosticText.Text = LocalizationManager.Text("FreePortRunning");
+                ToolTipService.SetToolTip(ServiceDiagnosticText, ServiceDiagnosticText.Text);
+
+                bool launched = await TryLaunchFullTrustHelperAsync(FreeServicePortParameterGroupId);
+                if (!launched)
+                {
+                    ServiceDiagnosticText.Text = LocalizationManager.Text("FreePortFailed");
+                    ToolTipService.SetToolTip(ServiceDiagnosticText, ServiceDiagnosticText.Text);
+                    App.Log("Free port helper launch failed.");
+                    return;
+                }
+
+                await Task.Delay(1200);
+                await EnsureServiceAvailableAsync();
+            }
+            catch (Exception ex)
+            {
+                ServiceDiagnosticText.Text = LocalizationManager.Text("FreePortFailed");
+                ToolTipService.SetToolTip(ServiceDiagnosticText, ServiceDiagnosticText.Text);
+                App.Log("Free port failed: " + ex);
             }
         }
 
@@ -652,6 +686,7 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(StartServiceButton, LocalizationManager.Text("StartServiceTooltip"));
             ToolTipService.SetToolTip(CheckServiceButton, LocalizationManager.Text("CheckServiceTooltip"));
             ToolTipService.SetToolTip(OpenLogsButton, LocalizationManager.Text("OpenLogsTooltip"));
+            ToolTipService.SetToolTip(FreePortButton, LocalizationManager.Text("FreePortTooltip"));
             ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTooltip"));
             ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTooltip"));
             ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTooltip"));
@@ -663,6 +698,12 @@ namespace TestXboxGameBar
             CfgLabelText.Text = LocalizationManager.Text("CfgLabel");
             TestLabelText.Text = LocalizationManager.Text("TestLabel");
             ViewLabelText.Text = LocalizationManager.Text("ViewLabel");
+            CrossfireSwatGrVoiceItem.Content = LocalizationManager.Text("CrossfireSwatGr");
+            CrossfireSwatBlVoiceItem.Content = LocalizationManager.Text("CrossfireSwatBl");
+            CrossfireFlyingTigerGrVoiceItem.Content = LocalizationManager.Text("CrossfireFlyingTigerGr");
+            CrossfireFlyingTigerBlVoiceItem.Content = LocalizationManager.Text("CrossfireFlyingTigerBl");
+            CrossfireWomenGrVoiceItem.Content = LocalizationManager.Text("CrossfireWomenGr");
+            CrossfireWomenBlVoiceItem.Content = LocalizationManager.Text("CrossfireWomenBl");
 
             ToolTipService.SetToolTip(VoicePackSelector, LocalizationManager.Text("VoiceTooltip"));
             ToolTipService.SetToolTip(SelectCsFolderButton, LocalizationManager.Text("SelectCsFolderTooltip"));
@@ -828,16 +869,21 @@ namespace TestXboxGameBar
 
         private static async Task<bool> TryLaunchPackagedServiceAsync()
         {
+            return await TryLaunchFullTrustHelperAsync(PackagedServiceParameterGroupId);
+        }
+
+        private static async Task<bool> TryLaunchFullTrustHelperAsync(string parameterGroupId)
+        {
             try
             {
-                App.Log("Launching packaged KillConfirm service. group=" + PackagedServiceParameterGroupId);
+                App.Log("Launching full-trust helper. group=" + parameterGroupId);
                 if (!ApiInformation.IsTypePresent("Windows.ApplicationModel.FullTrustProcessLauncher"))
                 {
                     App.Log("FullTrustProcessLauncher is not available on this Windows build.");
                     return false;
                 }
 
-                IAsyncAction launchAction = LaunchFullTrustProcessForCurrentAppWithParameters(PackagedServiceParameterGroupId);
+                IAsyncAction launchAction = LaunchFullTrustProcessForCurrentAppWithParameters(parameterGroupId);
                 if (launchAction == null)
                 {
                     App.Log("FullTrustProcessLauncher returned no launch action.");
@@ -845,7 +891,7 @@ namespace TestXboxGameBar
                 }
 
                 await launchAction;
-                App.Log("Packaged service launch call returned without exception.");
+                App.Log("Full-trust helper launch call returned without exception. group=" + parameterGroupId);
                 return true;
             }
             catch (Exception ex)
@@ -1106,6 +1152,8 @@ namespace TestXboxGameBar
                 preset = "crossfire";
             }
 
+            preset = NormalizeVoicePackPreset(preset);
+            ApplicationData.Current.LocalSettings.Values[VoicePackSettingKey] = preset;
             SelectVoicePackPreset(preset);
         }
 
@@ -1156,6 +1204,7 @@ namespace TestXboxGameBar
 
         private void SelectVoicePackPreset(string preset)
         {
+            preset = NormalizeVoicePackPreset(preset);
             _suppressVoicePackEvents = true;
             try
             {
@@ -1183,12 +1232,42 @@ namespace TestXboxGameBar
             try
             {
                 JsonObject json = JsonObject.Parse(responseText);
-                string preset = json.GetNamedString("preset", GetSelectedVoicePackPreset());
+                string preset = NormalizeVoicePackPreset(json.GetNamedString("preset", GetSelectedVoicePackPreset()));
                 ApplicationData.Current.LocalSettings.Values[VoicePackSettingKey] = preset;
                 SelectVoicePackPreset(preset);
             }
             catch (Exception)
             {
+            }
+        }
+
+        private static string NormalizeVoicePackPreset(string preset)
+        {
+            if (string.IsNullOrWhiteSpace(preset))
+            {
+                return "crossfire";
+            }
+
+            switch (preset.Trim().ToLowerInvariant())
+            {
+                case "cf":
+                case "crossfire":
+                    return "crossfire_swat_gr";
+                case "cffhd":
+                case "cf_fhd":
+                case "crossfire_fhd":
+                case "crossfire_v_fhd":
+                    return "crossfire_flying_tiger_gr";
+                case "kkgr":
+                case "knifegr":
+                case "knifekill_gr":
+                    return "crossfire_women_gr";
+                case "kkbl":
+                case "knifebl":
+                case "knifekill_bl":
+                    return "crossfire_women_bl";
+                default:
+                    return preset;
             }
         }
 
