@@ -1,8 +1,7 @@
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",
-    [string]$MsBuildPath = "",
-    [switch]$NoProcessShutdown
+    [string]$MsBuildPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -101,8 +100,7 @@ $InstallScript = @'
 param(
     [switch]$SkipLoopback = $false,
     [switch]$SkipGsiConfig = $false,
-    [switch]$OpenGameBar = $false,
-    [bool]$NoProcessShutdown = __NO_PROCESS_SHUTDOWN__
+    [switch]$OpenGameBar = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -250,22 +248,17 @@ function Install-OverlayPackage {
         throw "OverlayPackage was not found under $ScriptRoot"
     }
 
-    if (-not $NoProcessShutdown) {
-        $processNames = @(
-            "cskillconfirm",
-            "TestXboxGameBar",
-            "KillConfirmOverlay",
-            "KillConfirmGameBar",
-            "GameBar",
-            "GameBarFTServer",
-            "GameBarPresenceWriter"
-        )
-        Get-Process -Name $processNames -ErrorAction SilentlyContinue | Stop-Process -Force
-        Start-Sleep -Milliseconds 800
-    }
-    else {
-        Write-InstallLog "Skipping process shutdown before MSIX install."
-    }
+    $processNames = @(
+        "cskillconfirm",
+        "TestXboxGameBar",
+        "KillConfirmOverlay",
+        "KillConfirmGameBar",
+        "GameBar",
+        "GameBarFTServer",
+        "GameBarPresenceWriter"
+    )
+    Get-Process -Name $processNames -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Milliseconds 800
 
     $msix = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.msix" -File | Select-Object -First 1
     if (-not $msix) {
@@ -496,11 +489,6 @@ KillConfirmGameBar transfer package - Chinese quick guide
 3. Open Kill Confirm Overlay in Xbox Game Bar.
 4. If the status is not green, use the panel Check button and the CFG check area.
 '@
-
-$InstallScript = $InstallScript.Replace(
-    "__NO_PROCESS_SHUTDOWN__",
-    $(if ($NoProcessShutdown) { '$true' } else { '$false' })
-)
 
 Set-Content -LiteralPath (Join-Path $TransferRoot "Install-KillConfirm.ps1") -Value $InstallScript -Encoding UTF8
 Set-Content -LiteralPath (Join-Path $TransferRoot "README.txt") -Value $Readme -Encoding UTF8

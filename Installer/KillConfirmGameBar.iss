@@ -10,10 +10,6 @@
   #define TransferRoot "..\..\KillConfirmGameBar_Transfer_1.0.0.0"
 #endif
 
-#ifndef OutputSuffix
-  #define OutputSuffix ""
-#endif
-
 [Setup]
 AppId={{E0DF6407-CB2E-43D0-8B51-8C8924F50AA1}
 AppName={#MyAppName}
@@ -23,7 +19,7 @@ DefaultDirName={autopf}\Kill Confirm Overlay
 DefaultGroupName=Kill Confirm Overlay
 DisableProgramGroupPage=yes
 OutputDir=..\Output
-OutputBaseFilename=KillConfirmGameBar_Setup_{#MyAppVersion}{#OutputSuffix}
+OutputBaseFilename=KillConfirmGameBar_Setup_{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -56,11 +52,7 @@ Source: "{#TransferRoot}\*"; DestDir: "{app}\Payload"; Flags: ignoreversion recu
 Name: "{group}\{cm:OpenXboxGameBar}"; Filename: "explorer.exe"; Parameters: "ms-gamebar:"
 
 [UninstallRun]
-#ifndef NoProcessShutdown
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-Process -Name cskillconfirm,TestXboxGameBar,KillConfirmOverlay,KillConfirmGameBar,GameBar,GameBarFTServer,GameBarPresenceWriter -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Milliseconds 800; Get-AppxPackage KillConfirmGameBar.Overlay | Remove-AppxPackage -ErrorAction SilentlyContinue; CheckNetIsolation.exe LoopbackExempt -d -n=\""KillConfirmGameBar.Overlay_5jgcw66eyez0m\"" 2>$null"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveAppxPackage"
-#else
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-AppxPackage KillConfirmGameBar.Overlay | Remove-AppxPackage -ErrorAction SilentlyContinue; CheckNetIsolation.exe LoopbackExempt -d -n=\""KillConfirmGameBar.Overlay_5jgcw66eyez0m\"" 2>$null"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveAppxPackage"
-#endif
 
 [Code]
 procedure CurStepChanged(CurStep: TSetupStep);
