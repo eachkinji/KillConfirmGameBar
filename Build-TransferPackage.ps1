@@ -23,7 +23,8 @@ if (-not $Version) {
 
 $PackageFolderName = "KillConfirmGameBar.Package_{0}_{1}_{2}_Test" -f $Version, $Platform, $Configuration
 $PackageFileName = "KillConfirmGameBar.Package_{0}_{1}_{2}.msix" -f $Version, $Platform, $Configuration
-$PackageSourceRoot = Join-Path $Root ("Package\AppPackages\Integrated_Debug_Test\{0}" -f $PackageFolderName)
+$PackageOutputFolder = "Integrated_{0}_Package" -f $Configuration
+$PackageSourceRoot = Join-Path $Root ("Package\AppPackages\{0}\{1}" -f $PackageOutputFolder, $PackageFolderName)
 $AppPackagesRoot = Join-Path $Root "Package\AppPackages"
 $TransferRoot = Join-Path $WorkspaceRoot ("KillConfirmGameBar_Transfer_{0}" -f $Version)
 $TransferZip = "{0}.zip" -f $TransferRoot
@@ -81,7 +82,20 @@ $OverlayTransferRoot = Join-Path $TransferRoot "OverlayPackage"
 
 New-Item -ItemType Directory -Force -Path $OverlayTransferRoot | Out-Null
 
-Copy-Item -Path (Join-Path $PackageSourceRoot "*") -Destination $OverlayTransferRoot -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $PackageSourceRoot $PackageFileName) -Destination $OverlayTransferRoot -Force
+
+$PackageCertificate = Get-ChildItem -LiteralPath $PackageSourceRoot -Filter "*.cer" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($PackageCertificate) {
+    Copy-Item -LiteralPath $PackageCertificate.FullName -Destination $OverlayTransferRoot -Force
+}
+
+$DependencySourceRoot = Join-Path $PackageSourceRoot "Dependencies\$Platform"
+if (Test-Path $DependencySourceRoot) {
+    $DependencyTargetRoot = Join-Path $OverlayTransferRoot "Dependencies\$Platform"
+    New-Item -ItemType Directory -Force -Path $DependencyTargetRoot | Out-Null
+    Get-ChildItem -LiteralPath $DependencySourceRoot -Include "*.appx", "*.msix" -File -Recurse |
+        Copy-Item -Destination $DependencyTargetRoot -Force
+}
 
 $InstallScript = @'
 param(

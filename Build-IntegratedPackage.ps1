@@ -219,7 +219,8 @@ Copy-Item -LiteralPath (Join-Path $ServiceRoot "sounds") -Destination $PackagedS
 
 Push-Location $PackageRoot
 try {
-    & $MsBuildPath KillConfirmGameBar.Package.wapproj /p:Configuration=$Configuration /p:Platform=$Platform /p:AppxPackageDir=AppPackages\Integrated_Debug_Test\ /t:Rebuild /verbosity:minimal
+    $PackageOutputFolder = "Integrated_{0}_Package" -f $Configuration
+    & $MsBuildPath KillConfirmGameBar.Package.wapproj /p:Configuration=$Configuration /p:Platform=$Platform /p:AppxPackageDir=AppPackages\$PackageOutputFolder\ /t:Rebuild /verbosity:minimal
 }
 finally {
     Pop-Location

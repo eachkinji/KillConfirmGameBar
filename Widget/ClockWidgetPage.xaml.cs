@@ -1,12 +1,14 @@
 using Microsoft.Gaming.XboxGameBar;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using TestXboxGameBar.Services;
 using Windows.ApplicationModel;
 using Windows.Data.Json;
 using Windows.Foundation;
+using Windows.Foundation.Metadata;
 using Windows.Storage.AccessCache;
 using Windows.Storage.Pickers;
 using Windows.Storage;
@@ -801,7 +803,59 @@ namespace TestXboxGameBar
             try
             {
                 App.Log("Launching packaged KillConfirm service. group=" + PackagedServiceParameterGroupId);
-                await FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync(PackagedServiceParameterGroupId);
+                if (!ApiInformation.IsTypePresent("Windows.ApplicationModel.FullTrustProcessLauncher"))
+                {
+                    App.Log("FullTrustProcessLauncher is not available on this Windows build.");
+                    return false;
+                }
+
+                Type launcherType = Type.GetType(
+                    "Windows.ApplicationModel.FullTrustProcessLauncher, Windows, ContentType=WindowsRuntime");
+                if (launcherType == null)
+                {
+                    launcherType = Type.GetType(
+                        "Windows.ApplicationModel.FullTrustProcessLauncher, Windows.ApplicationModel.FullTrustAppContract, ContentType=WindowsRuntime");
+                }
+                if (launcherType == null)
+                {
+                    launcherType = Type.GetType("Windows.ApplicationModel.FullTrustProcessLauncher, Windows.ApplicationModel");
+                }
+                if (launcherType == null)
+                {
+                    App.Log("Could not resolve FullTrustProcessLauncher runtime type.");
+                    return false;
+                }
+
+                MethodInfo launchMethod = null;
+                foreach (MethodInfo method in launcherType.GetRuntimeMethods())
+                {
+                    if (method.Name != "LaunchFullTrustProcessForCurrentAppAsync")
+                    {
+                        continue;
+                    }
+
+                    ParameterInfo[] parameters = method.GetParameters();
+                    if (parameters.Length == 1 && parameters[0].ParameterType == typeof(string))
+                    {
+                        launchMethod = method;
+                        break;
+                    }
+                }
+
+                if (launchMethod == null)
+                {
+                    App.Log("Could not resolve FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync(string).");
+                    return false;
+                }
+
+                object launchResult = launchMethod.Invoke(null, new object[] { PackagedServiceParameterGroupId });
+                if (!(launchResult is IAsyncAction launchAction))
+                {
+                    App.Log("FullTrustProcessLauncher returned an unexpected result type.");
+                    return false;
+                }
+
+                await launchAction;
                 App.Log("Packaged service launch call returned without exception.");
                 return true;
             }
