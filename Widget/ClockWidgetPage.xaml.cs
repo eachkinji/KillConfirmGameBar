@@ -28,9 +28,9 @@ namespace TestXboxGameBar
 {
     public sealed partial class ClockWidgetPage : Page
     {
-        private static readonly Size DefaultWidgetSize = new Size(240, 180);
+        private static readonly Size DefaultWidgetSize = new Size(520, 180);
         private static readonly Size MinWidgetSize = new Size(160, 120);
-        private static readonly Size MaxWidgetSize = new Size(400, 720);
+        private static readonly Size MaxWidgetSize = new Size(720, 720);
         private const double AnimationOffsetStep = 12.0;
         private const double MaxAnimationOffsetRatio = 0.45;
         private const double BottomFifthAnimationOffsetRatio = 0.30;
@@ -152,7 +152,8 @@ namespace TestXboxGameBar
         {
             InitializeComponent();
             AnimationLayer.SizeChanged += OnAnimationLayerSizeChanged;
-            VersionText.Text = GetDisplayVersion();
+            VersionText.Text = GetCompactDisplayVersion();
+            ToolTipService.SetToolTip(VersionText, GetDisplayVersion());
             LoadLanguageSelector();
             ApplyLanguage();
 
@@ -2153,6 +2154,19 @@ namespace TestXboxGameBar
             {
                 PackageVersion version = Package.Current.Id.Version;
                 return $"v{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+            }
+            catch (Exception)
+            {
+                return "v?";
+            }
+        }
+
+        private static string GetCompactDisplayVersion()
+        {
+            try
+            {
+                PackageVersion version = Package.Current.Id.Version;
+                return $"v{version.Revision}";
             }
             catch (Exception)
             {

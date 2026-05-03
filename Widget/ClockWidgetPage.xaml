@@ -100,8 +100,8 @@
             Padding="6"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
-            Width="400"
-            MaxWidth="400"
+            Width="520"
+            MaxWidth="520"
             Background="#E711161D"
             BorderBrush="#3D4D61"
             BorderThickness="1"
@@ -122,8 +122,8 @@
                 <Grid ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="96" />
-                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="88" />
+                        <ColumnDefinition Width="54" />
                     </Grid.ColumnDefinitions>
 
                     <Border
@@ -159,7 +159,7 @@
 
                     <Border
                         Grid.Column="2"
-                        Width="96"
+                        Width="54"
                         Padding="8,0"
                         Height="28"
                         VerticalAlignment="Center"
@@ -170,7 +170,7 @@
                         <TextBlock
                             x:Name="VersionText"
                             VerticalAlignment="Center"
-                            FontSize="10"
+                            FontSize="9"
                             FontWeight="SemiBold"
                             Foreground="#FFBFD0E3"
                             Text="v..." />
@@ -220,7 +220,7 @@
                     <Border
                         x:Name="ConnectionStatusBadge"
                         Grid.Column="3"
-                        Width="54"
+                        Width="68"
                         Height="28"
                         Background="#223040"
                         BorderBrush="#3E5164"
@@ -250,7 +250,7 @@
                     <Border
                         x:Name="CfgStatusBadge"
                         Grid.Column="4"
-                        Width="54"
+                        Width="68"
                         Height="28"
                         Background="#223040"
                         BorderBrush="#3E5164"
