@@ -21,6 +21,7 @@ using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using Windows.Web.Http;
+using Windows.System;
 
 namespace TestXboxGameBar
 {
@@ -314,6 +315,18 @@ namespace TestXboxGameBar
         private async void OnStartServiceClick(object sender, RoutedEventArgs e)
         {
             await EnsureServiceAvailableAsync();
+        }
+
+        private async void OnOpenLogsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await Launcher.LaunchFolderAsync(ApplicationData.Current.LocalFolder);
+            }
+            catch (Exception ex)
+            {
+                App.Log("Failed to open log folder: " + ex);
+            }
         }
 
         private void OnLanguageSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -638,6 +651,7 @@ namespace TestXboxGameBar
 
             ToolTipService.SetToolTip(StartServiceButton, LocalizationManager.Text("StartServiceTooltip"));
             ToolTipService.SetToolTip(CheckServiceButton, LocalizationManager.Text("CheckServiceTooltip"));
+            ToolTipService.SetToolTip(OpenLogsButton, LocalizationManager.Text("OpenLogsTooltip"));
             ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTooltip"));
             ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTooltip"));
             ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTooltip"));
@@ -760,6 +774,7 @@ namespace TestXboxGameBar
                 if (!launched)
                 {
                     UpdateConnectionState(KillEventConnectionState.Disconnected);
+                    await ShowServiceStartupFailureAsync();
                     return;
                 }
 
@@ -774,7 +789,12 @@ namespace TestXboxGameBar
 
                 if (ready)
                 {
+                    HideServiceDiagnostic();
                     await SyncSelectedVoicePackAsync();
+                }
+                else
+                {
+                    await ShowServiceStartupFailureAsync();
                 }
             }
             finally
@@ -797,7 +817,12 @@ namespace TestXboxGameBar
 
             if (isHealthy)
             {
+                HideServiceDiagnostic();
                 await SyncSelectedVoicePackAsync();
+            }
+            else
+            {
+                await ShowServiceStartupFailureAsync();
             }
         }
 
@@ -922,6 +947,58 @@ namespace TestXboxGameBar
             bool finalHealth = await IsServiceHealthyAsync();
             App.Log("WaitForServiceReadyAsync: timeout reached. final health=" + finalHealth);
             return finalHealth;
+        }
+
+        private async Task ShowServiceStartupFailureAsync()
+        {
+            string hint = await ResolveServiceFailureHintAsync();
+            ServiceDiagnosticText.Text = hint;
+            ServiceDiagnosticRow.Visibility = Visibility.Visible;
+            ToolTipService.SetToolTip(ServiceDiagnosticText, hint);
+            App.Log("Service diagnostic shown: " + hint);
+        }
+
+        private void HideServiceDiagnostic()
+        {
+            ServiceDiagnosticRow.Visibility = Visibility.Collapsed;
+            ToolTipService.SetToolTip(ServiceDiagnosticText, null);
+        }
+
+        private static async Task<string> ResolveServiceFailureHintAsync()
+        {
+            string serviceLog = await TryReadLocalLogAsync("service.log");
+            string bootstrapLog = await TryReadLocalLogAsync("bootstrap.log");
+            string combined = (serviceLog + "\n" + bootstrapLog).ToLowerInvariant();
+
+            if (combined.Contains("os error 10048"))
+            {
+                return LocalizationManager.Text("ServicePortInUseHint");
+            }
+
+            if (combined.Contains("os error 10013"))
+            {
+                return LocalizationManager.Text("ServicePortBlockedHint");
+            }
+
+            if (combined.Contains("fatal error"))
+            {
+                return LocalizationManager.Text("ServiceFailedSeeLogs");
+            }
+
+            return LocalizationManager.Text("ServiceFailedGeneric");
+        }
+
+        private static async Task<string> TryReadLocalLogAsync(string fileName)
+        {
+            try
+            {
+                StorageFile file = await ApplicationData.Current.LocalFolder.GetFileAsync(fileName);
+                return await FileIO.ReadTextAsync(file);
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         private static async Task<bool> IsServiceHealthyAsync()
@@ -1389,6 +1466,7 @@ namespace TestXboxGameBar
                 case KillEventConnectionState.Connected:
                     ConnectionDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
                     ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceRunning"));
+                    HideServiceDiagnostic();
                     break;
                 case KillEventConnectionState.Connecting:
                     ConnectionDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
