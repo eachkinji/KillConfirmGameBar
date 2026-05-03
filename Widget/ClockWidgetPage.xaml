@@ -172,6 +172,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
@@ -292,9 +293,46 @@
                         </StackPanel>
                     </Border>
 
+                    <Border
+                        x:Name="AnimationCacheStatusBadge"
+                        Grid.Column="6"
+                        Width="54"
+                        Height="28"
+                        Background="#223040"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        ToolTipService.ToolTip="Animation cache status">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="4">
+                            <ProgressRing
+                                x:Name="AnimationCacheRing"
+                                Width="10"
+                                Height="10"
+                                Foreground="#FFFBBF24"
+                                IsActive="False" />
+                            <Border
+                                x:Name="AnimationCacheDot"
+                                Width="8"
+                                Height="8"
+                                Background="#FF6B7280"
+                                CornerRadius="4"
+                                Visibility="Collapsed" />
+                            <TextBlock
+                                x:Name="AnimationCacheBadgeText"
+                                FontSize="9"
+                                FontWeight="SemiBold"
+                                Foreground="#FFBFD0E3"
+                                Text="ANI" />
+                        </StackPanel>
+                    </Border>
+
                     <TextBlock
                         x:Name="ReadinessText"
-                        Grid.Column="6"
+                        Grid.Column="7"
                         VerticalAlignment="Center"
                         FontSize="10"
                         FontWeight="SemiBold"

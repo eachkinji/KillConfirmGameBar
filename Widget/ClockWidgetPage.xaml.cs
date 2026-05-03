@@ -35,8 +35,7 @@ namespace TestXboxGameBar
         private const double MaxAnimationOffsetRatio = 0.45;
         private const double ScaleUpFactor = 1.1;
         private const double ScaleDownFactor = 0.9;
-        private const int StartupPreloadDelayMs = 1200;
-        private const int ExtendedPreloadDelayMs = 5000;
+        private const int StartupPreloadDelayMs = 250;
         private const int StreakBadgeDisplayDurationMs = 1800;
         private const int DefaultPreviewKillCount = 2;
         private const double DefaultBrightnessValue = 70;
@@ -137,6 +136,7 @@ namespace TestXboxGameBar
         private KillEventConnectionState _serviceConnectionState = KillEventConnectionState.Disconnected;
         private bool _gsiRecentlySeen;
         private bool _gsiStatusCheckPending;
+        private int _animationPreloadToken;
         private DateTimeOffset _lastGsiStatusCheck = DateTimeOffset.MinValue;
         private readonly DispatcherTimer _controlPanelStateTimer;
         private readonly DispatcherTimer _streakBadgeTimer;
@@ -183,7 +183,6 @@ namespace TestXboxGameBar
             ConfigureWidgetCapabilities();
             _ = EnsureServiceAvailableAsync();
             _ = LoadSavedCsFolderAsync();
-            _ = WarmStartupAnimationCacheAsync();
             UpdateControlPanelVisibility();
             base.OnNavigatedTo(e);
         }
@@ -749,6 +748,7 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTooltip"));
             ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTooltip"));
             ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTooltip"));
+            ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheTooltip"));
 
             ServiceBadgeText.Text = "SVC";
             CfgBadgeText.Text = "CFG";
@@ -1328,27 +1328,74 @@ namespace TestXboxGameBar
 
         private async Task WarmStartupAnimationCacheAsync()
         {
+            int token = ++_animationPreloadToken;
+            UpdateAnimationCacheProgress(0);
+
             try
             {
                 await Task.Delay(StartupPreloadDelayMs);
-                await PrimaryKillAnimation.PreloadStartupAnimationsAsync();
+
+                if (!_isPageActive || token != _animationPreloadToken)
+                {
+                    return;
+                }
+
+                var progress = new Progress<int>(value =>
+                {
+                    if (token == _animationPreloadToken)
+                    {
+                        UpdateAnimationCacheProgress(value);
+                    }
+                });
+
+                await PrimaryKillAnimation.PreloadGameplayAnimationsAsync(progress);
+
+                if (_isPageActive && token == _animationPreloadToken)
+                {
+                    UpdateAnimationCacheReady();
+                }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                App.Log("Animation preload failed: " + ex);
+                if (_isPageActive && token == _animationPreloadToken)
+                {
+                    UpdateAnimationCacheFailed();
+                }
             }
         }
 
-        private async Task WarmExtendedAnimationCacheAsync()
+        private void UpdateAnimationCacheProgress(int percent)
         {
-            try
-            {
-                await Task.Delay(ExtendedPreloadDelayMs);
-                await PrimaryKillAnimation.PreloadCommonAnimationsAsync();
-                await BadgeKillAnimation.PreloadCommonAnimationsAsync();
-            }
-            catch (Exception)
-            {
-            }
+            int value = Math.Max(0, Math.Min(100, percent));
+            AnimationCacheRing.IsActive = true;
+            AnimationCacheRing.Visibility = Visibility.Visible;
+            AnimationCacheDot.Visibility = Visibility.Collapsed;
+            AnimationCacheBadgeText.Text = value + "%";
+            AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
+            ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheLoading") + value + "%");
+        }
+
+        private void UpdateAnimationCacheReady()
+        {
+            AnimationCacheRing.IsActive = false;
+            AnimationCacheRing.Visibility = Visibility.Collapsed;
+            AnimationCacheDot.Visibility = Visibility.Visible;
+            AnimationCacheDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
+            AnimationCacheBadgeText.Text = "ANI";
+            AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 191, 208, 227));
+            ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheReady"));
+        }
+
+        private void UpdateAnimationCacheFailed()
+        {
+            AnimationCacheRing.IsActive = false;
+            AnimationCacheRing.Visibility = Visibility.Collapsed;
+            AnimationCacheDot.Visibility = Visibility.Visible;
+            AnimationCacheDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
+            AnimationCacheBadgeText.Text = "ANI";
+            AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 191, 208, 227));
+            ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheFailed"));
         }
 
         private void HandleKillEvent(KillEvent killEvent)
@@ -1790,6 +1837,11 @@ namespace TestXboxGameBar
             localSettings.Values[BrightnessSettingKey] = brightness;
             localSettings.Values[ContrastSettingKey] = contrast;
             UpdateVisualAdjustmentLabels(brightness, contrast);
+
+            if (_isPageActive)
+            {
+                _ = WarmStartupAnimationCacheAsync();
+            }
         }
 
         private static double ReadSelectedPercentage(ComboBox selector, double fallback)

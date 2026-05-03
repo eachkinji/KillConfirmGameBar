@@ -90,19 +90,30 @@ namespace TestXboxGameBar.Controls
         {
             if (_startupPreloadTask == null)
             {
-                _startupPreloadTask = PreloadSelectedAnimationsAsync(new[]
+                _startupPreloadTask = PreloadGameplayAnimationsAsync(null);
+            }
+
+            return _startupPreloadTask;
+        }
+
+        public Task PreloadGameplayAnimationsAsync(IProgress<int> progress)
+        {
+            return PreloadSelectedAnimationsAsync(
+                new[]
                 {
                     OneKillRemasterAssetKey,
                     TwoKillRemasterAssetKey,
+                    ThreeKillRemasterAssetKey,
+                    FourKillRemasterAssetKey,
+                    FiveKillRemasterAssetKey,
+                    SixKillRemasterAssetKey,
                     HeadshotAssetKey,
                     GoldHeadshotAssetKey,
                     FirstKillAssetKey,
                     KnifeKillAssetKey,
                     LastKillAssetKey
-                });
-            }
-
-            return _startupPreloadTask;
+                },
+                progress);
         }
 
         public static void ConfigureRenderSettings(double brightnessBoost, double contrastBoost)
@@ -251,9 +262,13 @@ namespace TestXboxGameBar.Controls
             }
         }
 
-        private async Task PreloadSelectedAnimationsAsync(IEnumerable<string> assetKeys)
+        private async Task PreloadSelectedAnimationsAsync(IEnumerable<string> assetKeys, IProgress<int> progress = null)
         {
-            foreach (string assetKey in assetKeys)
+            string[] keys = assetKeys.ToArray();
+            int loaded = 0;
+            progress?.Report(0);
+
+            foreach (string assetKey in keys)
             {
                 try
                 {
@@ -262,6 +277,12 @@ namespace TestXboxGameBar.Controls
                 catch
                 {
                 }
+
+                loaded++;
+                int percent = keys.Length == 0
+                    ? 100
+                    : (int)Math.Round(loaded * 100.0 / keys.Length);
+                progress?.Report(Math.Max(1, Math.Min(100, percent)));
             }
         }
 
