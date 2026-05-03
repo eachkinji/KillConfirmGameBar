@@ -1,7 +1,8 @@
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",
-    [string]$MsBuildPath = ""
+    [string]$MsBuildPath = "",
+    [switch]$NoProcessShutdown
 )
 
 $ErrorActionPreference = "Stop"
@@ -86,7 +87,8 @@ $InstallScript = @'
 param(
     [switch]$SkipLoopback = $false,
     [switch]$SkipGsiConfig = $false,
-    [switch]$OpenGameBar = $false
+    [switch]$OpenGameBar = $false,
+    [bool]$NoProcessShutdown = __NO_PROCESS_SHUTDOWN__
 )
 
 $ErrorActionPreference = "Stop"
@@ -103,22 +105,153 @@ function Write-InstallLog {
     Write-Host $Message
 }
 
+function Get-AppxIdentityFromPackageFile {
+    param([string]$PackagePath)
+
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($PackagePath)
+        try {
+            $entry = $zip.GetEntry("AppxManifest.xml")
+            if (-not $entry) {
+                return $null
+            }
+
+            $reader = New-Object System.IO.StreamReader($entry.Open())
+            try {
+                [xml]$manifest = $reader.ReadToEnd()
+            }
+            finally {
+                $reader.Dispose()
+            }
+
+            if (-not $manifest.Package.Identity.Name) {
+                return $null
+            }
+
+            return [pscustomobject]@{
+                Name = $manifest.Package.Identity.Name
+                Version = [version]$manifest.Package.Identity.Version
+                Publisher = $manifest.Package.Identity.Publisher
+            }
+        }
+        finally {
+            $zip.Dispose()
+        }
+    }
+    catch {
+        Write-InstallLog "Could not inspect package identity for ${PackagePath}: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Test-AppxPackageInstalled {
+    param([string]$PackagePath)
+
+    $identity = Get-AppxIdentityFromPackageFile -PackagePath $PackagePath
+    if (-not $identity) {
+        return $false
+    }
+
+    $installed = Get-AppxPackage -Name $identity.Name -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if (-not $installed) {
+        return $false
+    }
+
+    try {
+        return ([version]$installed.Version -ge $identity.Version)
+    }
+    catch {
+        return $true
+    }
+}
+
+function Write-AppxFailureDetails {
+    param([System.Management.Automation.ErrorRecord]$ErrorRecord)
+
+    Write-InstallLog ("Install failed: {0}" -f $ErrorRecord.Exception.Message)
+    $details = ($ErrorRecord | Format-List * -Force | Out-String)
+    Add-Content -LiteralPath $LogPath -Value $details -Encoding UTF8
+
+    $activityId = $null
+    if ($ErrorRecord.Exception -and $ErrorRecord.Exception.ActivityId) {
+        $activityId = $ErrorRecord.Exception.ActivityId
+    }
+
+    if ($activityId) {
+        try {
+            Write-InstallLog "AppX deployment activity id: $activityId"
+            $activityLog = Get-AppPackageLog -ActivityID $activityId -ErrorAction Stop | Out-String
+            Add-Content -LiteralPath $LogPath -Value $activityLog -Encoding UTF8
+        }
+        catch {
+            Write-InstallLog "Could not read AppX activity log: $($_.Exception.Message)"
+        }
+    }
+
+    try {
+        $events = Get-WinEvent -LogName "Microsoft-Windows-AppXDeploymentServer/Operational" -MaxEvents 30 -ErrorAction Stop |
+            Select-Object TimeCreated, Id, LevelDisplayName, ProviderName, Message |
+            Format-List |
+            Out-String
+        Add-Content -LiteralPath $LogPath -Value $events -Encoding UTF8
+    }
+    catch {
+        Write-InstallLog "Could not read AppX deployment event log: $($_.Exception.Message)"
+    }
+}
+
+function Add-AppxPackageCompat {
+    param(
+        [string]$PackagePath,
+        [switch]$ForceUpdate,
+        [switch]$DeferWhenInUse
+    )
+
+    $command = Get-Command Add-AppxPackage -ErrorAction Stop
+    $addPackageParams = @{
+        Path = $PackagePath
+        ErrorAction = "Stop"
+    }
+
+    if ($ForceUpdate -and $command.Parameters.ContainsKey("ForceUpdateFromAnyVersion")) {
+        $addPackageParams.ForceUpdateFromAnyVersion = $true
+    }
+    if ($DeferWhenInUse -and $command.Parameters.ContainsKey("DeferRegistrationWhenPackagesAreInUse")) {
+        $addPackageParams.DeferRegistrationWhenPackagesAreInUse = $true
+    }
+    try {
+        Add-AppxPackage @addPackageParams
+    }
+    catch {
+        Write-AppxFailureDetails -ErrorRecord $_
+        throw
+    }
+}
+
 function Install-OverlayPackage {
     if (-not (Test-Path $OverlayRoot)) {
         throw "OverlayPackage was not found under $ScriptRoot"
     }
 
-    $processNames = @(
-        "cskillconfirm",
-        "TestXboxGameBar",
-        "KillConfirmOverlay",
-        "KillConfirmGameBar",
-        "GameBar",
-        "GameBarFTServer",
-        "GameBarPresenceWriter"
-    )
-    Get-Process -Name $processNames -ErrorAction SilentlyContinue | Stop-Process -Force
-    Start-Sleep -Milliseconds 800
+    if (-not $NoProcessShutdown) {
+        $processNames = @(
+            "cskillconfirm",
+            "TestXboxGameBar",
+            "KillConfirmOverlay",
+            "KillConfirmGameBar",
+            "GameBar",
+            "GameBarFTServer",
+            "GameBarPresenceWriter"
+        )
+        Get-Process -Name $processNames -ErrorAction SilentlyContinue | Stop-Process -Force
+        Start-Sleep -Milliseconds 800
+    }
+    else {
+        Write-InstallLog "Skipping process shutdown before MSIX install."
+    }
 
     $msix = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.msix" -File | Select-Object -First 1
     if (-not $msix) {
@@ -141,13 +274,19 @@ function Install-OverlayPackage {
         $dependencies = @(Get-ChildItem -LiteralPath $dependencyRoot -Include "*.appx", "*.msix" -File -Recurse | ForEach-Object { $_.FullName })
     }
 
+    foreach ($dependency in $dependencies) {
+        $dependencyName = Split-Path -Leaf $dependency
+        if (Test-AppxPackageInstalled -PackagePath $dependency) {
+            Write-InstallLog "Dependency already installed: $dependencyName"
+            continue
+        }
+
+        Write-InstallLog "Installing dependency: $dependencyName"
+        Add-AppxPackageCompat -PackagePath $dependency
+    }
+
     Write-InstallLog "Installing MSIX package: $($msix.Name)"
-    if ($dependencies.Count -gt 0) {
-        Add-AppxPackage -Path $msix.FullName -DependencyPath $dependencies -ForceApplicationShutdown -ForceUpdateFromAnyVersion
-    }
-    else {
-        Add-AppxPackage -Path $msix.FullName -ForceApplicationShutdown -ForceUpdateFromAnyVersion
-    }
+    Add-AppxPackageCompat -PackagePath $msix.FullName -ForceUpdate -DeferWhenInUse
 }
 
 function Test-OverlayPackageInstalled {
@@ -343,6 +482,11 @@ KillConfirmGameBar transfer package - Chinese quick guide
 3. Open Kill Confirm Overlay in Xbox Game Bar.
 4. If the status is not green, use the panel Check button and the CFG check area.
 '@
+
+$InstallScript = $InstallScript.Replace(
+    "__NO_PROCESS_SHUTDOWN__",
+    $(if ($NoProcessShutdown) { '$true' } else { '$false' })
+)
 
 Set-Content -LiteralPath (Join-Path $TransferRoot "Install-KillConfirm.ps1") -Value $InstallScript -Encoding UTF8
 Set-Content -LiteralPath (Join-Path $TransferRoot "README.txt") -Value $Readme -Encoding UTF8

@@ -2,7 +2,9 @@ param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",
     [string]$MsBuildPath = "",
-    [string]$InnoCompilerPath = ""
+    [string]$InnoCompilerPath = "",
+    [switch]$NoProcessShutdown,
+    [string]$OutputSuffix = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,7 +30,11 @@ if (-not $Version) {
 
 $TransferRoot = Join-Path $WorkspaceRoot ("KillConfirmGameBar_Transfer_{0}" -f $Version)
 
-& (Join-Path $Root "Build-TransferPackage.ps1") -Configuration $Configuration -Platform $Platform -MsBuildPath $MsBuildPath
+if ($NoProcessShutdown -and -not $OutputSuffix) {
+    $OutputSuffix = "_NoShutdown"
+}
+
+& (Join-Path $Root "Build-TransferPackage.ps1") -Configuration $Configuration -Platform $Platform -MsBuildPath $MsBuildPath -NoProcessShutdown:$NoProcessShutdown
 
 if (-not (Test-Path $TransferRoot)) {
     throw "Expected transfer folder was not produced: $TransferRoot"
@@ -55,16 +61,23 @@ if (-not $InnoCompilerPath -or -not (Test-Path $InnoCompilerPath)) {
 
 New-Item -ItemType Directory -Force -Path (Join-Path $Root "Output") | Out-Null
 
-& $InnoCompilerPath `
-    ("/DMyAppVersion={0}" -f $Version) `
-    ("/DTransferRoot={0}" -f $TransferRoot) `
-    $InstallerScript
+$innoArgs = @(
+    ("/DMyAppVersion={0}" -f $Version),
+    ("/DTransferRoot={0}" -f $TransferRoot),
+    ("/DOutputSuffix={0}" -f $OutputSuffix)
+)
+if ($NoProcessShutdown) {
+    $innoArgs += "/DNoProcessShutdown=1"
+}
+$innoArgs += $InstallerScript
+
+& $InnoCompilerPath @innoArgs
 
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE"
 }
 
-$SetupPath = Join-Path $Root ("Output\KillConfirmGameBar_Setup_{0}.exe" -f $Version)
+$SetupPath = Join-Path $Root ("Output\KillConfirmGameBar_Setup_{0}{1}.exe" -f $Version, $OutputSuffix)
 if (-not (Test-Path $SetupPath)) {
     throw "Expected installer was not produced: $SetupPath"
 }
