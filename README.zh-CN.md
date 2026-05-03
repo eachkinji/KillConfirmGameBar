@@ -1,5 +1,24 @@
 # KillConfirmGameBar 中文说明
 
+## 路线图
+
+目前已经实现：
+
+- 击杀语音。
+- 击杀图标和击杀动画显示。
+
+后续计划：
+
+- 实现单纯由代码驱动的击杀特效，用来适配各种击杀图标。目前仍然是动画帧形式。
+- 适配更多角色语音。
+- 实现更完整的设置功能，比如更精细地调节动画帧数等。
+- 实现更多对局内可用语音，比如 C4、回合开始语音、回合结束语音等。
+
+## 注意事项
+
+- 插件会监听本地端口来接收 CS2 Game State Integration 事件。开启系统代理可能会导致本地服务收不到事件，表现为组件已启动，但进游戏击杀后没有语音和图标。
+- 如果使用类似 Clash 的系统代理工具，游玩前建议关闭系统代理。视频简介和安装说明里也建议提醒这一点，方便用户排查“击杀没反应”的问题。
+
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 KillConfirmGameBar 是一个用于 Counter-Strike 2 的击杀确认 Xbox Game Bar 悬浮窗。
@@ -16,9 +35,10 @@ KillConfirmGameBar 是一个用于 Counter-Strike 2 的击杀确认 Xbox Game Ba
 
 当前语音包：
 
-- `cf`
-- `cffhd`
+- `swat GR / swat BL`
+- `tiger GR / tiger BL`
 - `cfsex`
+- `women GR / women BL`
 
 ## 使用要求
 

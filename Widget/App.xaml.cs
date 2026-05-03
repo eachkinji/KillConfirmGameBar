@@ -78,6 +78,20 @@ namespace TestXboxGameBar
 
                 if (widgetArgs == null)
                 {
+                    if (args.Kind == ActivationKind.Protocol)
+                    {
+                        Frame guideFrame = Window.Current.Content as Frame;
+                        if (guideFrame == null)
+                        {
+                            guideFrame = CreateRootFrame();
+                            Window.Current.Content = guideFrame;
+                        }
+
+                        guideFrame.Navigate(typeof(MainPage));
+                        Window.Current.Activate();
+                        return;
+                    }
+
                     base.OnActivated(args);
                     return;
                 }

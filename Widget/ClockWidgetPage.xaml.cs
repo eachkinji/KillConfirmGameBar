@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TestXboxGameBar.Services;
 using Windows.ApplicationModel;
+using Windows.ApplicationModel.Core;
 using Windows.Data.Json;
 using Windows.Foundation;
 using Windows.Foundation.Metadata;
@@ -90,6 +91,7 @@ namespace TestXboxGameBar
         private static readonly Uri ServiceShutdownUri = new Uri("http://127.0.0.1:3000/shutdown");
         private static readonly Uri SoundPackUri = new Uri("http://127.0.0.1:3000/soundpack");
         private static readonly Uri Cs2RootUri = new Uri("http://127.0.0.1:3000/cs2-root");
+        private static readonly Uri GuideUri = new Uri("killconfirmoverlay://guide");
         private static readonly TimeSpan ServiceStartupTimeout = TimeSpan.FromSeconds(6);
         private static readonly TimeSpan ServiceStartupPollInterval = TimeSpan.FromMilliseconds(250);
         private const string FreeServicePortParameterGroupId = "FreeServicePort";
@@ -317,6 +319,62 @@ namespace TestXboxGameBar
         private async void OnStartServiceClick(object sender, RoutedEventArgs e)
         {
             await EnsureServiceAvailableAsync();
+        }
+
+        private async void OnOpenGuideClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (await TryOpenGuideAppEntryAsync())
+                {
+                    return;
+                }
+
+                bool launched = await Launcher.LaunchUriAsync(GuideUri);
+                App.Log("Open guide protocol launch result=" + launched);
+
+                if (!launched)
+                {
+                    ShowGuideOpenFailedHint();
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Log("Failed to open guide: " + ex);
+                ShowGuideOpenFailedHint();
+            }
+        }
+
+        private static async Task<bool> TryOpenGuideAppEntryAsync()
+        {
+            try
+            {
+                IReadOnlyList<AppListEntry> entries = await Package.Current.GetAppListEntriesAsync();
+                App.Log("Open guide app entries=" + entries.Count);
+
+                foreach (AppListEntry entry in entries)
+                {
+                    bool launched = await entry.LaunchAsync();
+                    App.Log("Open guide app entry launch result=" + launched);
+                    if (launched)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Log("Open guide app entry launch failed: " + ex);
+            }
+
+            return false;
+        }
+
+        private void ShowGuideOpenFailedHint()
+        {
+            string hint = LocalizationManager.Text("OpenGuideFailed");
+            ReadinessText.Text = hint;
+            ToolTipService.SetToolTip(ReadinessText, hint);
         }
 
         private async void OnOpenLogsClick(object sender, RoutedEventArgs e)
@@ -685,6 +743,7 @@ namespace TestXboxGameBar
 
             ToolTipService.SetToolTip(StartServiceButton, LocalizationManager.Text("StartServiceTooltip"));
             ToolTipService.SetToolTip(CheckServiceButton, LocalizationManager.Text("CheckServiceTooltip"));
+            ToolTipService.SetToolTip(OpenGuideButton, LocalizationManager.Text("OpenGuideTooltip"));
             ToolTipService.SetToolTip(OpenLogsButton, LocalizationManager.Text("OpenLogsTooltip"));
             ToolTipService.SetToolTip(FreePortButton, LocalizationManager.Text("FreePortTooltip"));
             ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTooltip"));
@@ -694,10 +753,7 @@ namespace TestXboxGameBar
             ServiceBadgeText.Text = "SVC";
             CfgBadgeText.Text = "CFG";
             GsiBadgeText.Text = "GSI";
-            VoiceLabelText.Text = LocalizationManager.Text("VoiceLabel");
             CfgLabelText.Text = LocalizationManager.Text("CfgLabel");
-            TestLabelText.Text = LocalizationManager.Text("TestLabel");
-            ViewLabelText.Text = LocalizationManager.Text("ViewLabel");
             CrossfireSwatGrVoiceItem.Content = LocalizationManager.Text("CrossfireSwatGr");
             CrossfireSwatBlVoiceItem.Content = LocalizationManager.Text("CrossfireSwatBl");
             CrossfireFlyingTigerGrVoiceItem.Content = LocalizationManager.Text("CrossfireFlyingTigerGr");
@@ -713,7 +769,6 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(TestPresetSelector, LocalizationManager.Text("TestPresetTooltip"));
             ToolTipService.SetToolTip(PreviewButton, LocalizationManager.Text("PreviewTooltip"));
             ToolTipService.SetToolTip(SendTestButton, LocalizationManager.Text("SendTestTooltip"));
-            SendTestButtonText.Text = LocalizationManager.Text("SendTestButton");
 
             ToolTipService.SetToolTip(DefaultSizeButton, LocalizationManager.Text("DefaultSizeTooltip"));
             ToolTipService.SetToolTip(CenterButton, LocalizationManager.Text("CenterWindowTooltip"));
@@ -724,9 +779,9 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(ScaleUpButton, LocalizationManager.Text("EnlargeTooltip"));
 
             ToolTipService.SetToolTip(BrightnessIcon, LocalizationManager.Text("BrightnessTooltip"));
-            ToolTipService.SetToolTip(BrightnessSlider, LocalizationManager.Text("BrightnessTooltip"));
+            ToolTipService.SetToolTip(BrightnessSelector, LocalizationManager.Text("BrightnessTooltip"));
             ToolTipService.SetToolTip(ContrastIcon, LocalizationManager.Text("ContrastTooltip"));
-            ToolTipService.SetToolTip(ContrastSlider, LocalizationManager.Text("ContrastTooltip"));
+            ToolTipService.SetToolTip(ContrastSelector, LocalizationManager.Text("ContrastTooltip"));
             ToolTipService.SetToolTip(ResetVisualButton, LocalizationManager.Text("ResetTooltip"));
 
             UpdateConnectionState(_serviceConnectionState);
@@ -1566,6 +1621,9 @@ namespace TestXboxGameBar
             _cfgStatusDetail = detail ?? string.Empty;
             CfgStatusText.Text = string.IsNullOrWhiteSpace(label) ? ResolveCfgStatusLabel(state) : label;
             CfgHintText.Text = ResolveCfgHintText(state, _cfgStatusDetail);
+            CfgActionRow.Visibility = state == CfgDetectionState.Ready
+                ? Visibility.Collapsed
+                : Visibility.Visible;
             CfgInstallButton.Visibility = state == CfgDetectionState.Missing
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -1682,12 +1740,12 @@ namespace TestXboxGameBar
             return LocalizationManager.Text("CfgSavedFolderPrefix") + detail;
         }
 
-        private void OnBrightnessValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        private void OnBrightnessSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             ApplyVisualAdjustmentSettings();
         }
 
-        private void OnContrastValueChanged(object sender, RangeBaseValueChangedEventArgs e)
+        private void OnContrastSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             ApplyVisualAdjustmentSettings();
         }
@@ -1695,8 +1753,8 @@ namespace TestXboxGameBar
         private void OnResetVisualAdjustmentsClick(object sender, RoutedEventArgs e)
         {
             _suppressVisualAdjustmentEvents = true;
-            BrightnessSlider.Value = DefaultBrightnessValue;
-            ContrastSlider.Value = DefaultContrastValue;
+            SelectPercentageOption(BrightnessSelector, DefaultBrightnessValue);
+            SelectPercentageOption(ContrastSelector, DefaultContrastValue);
             _suppressVisualAdjustmentEvents = false;
             ApplyVisualAdjustmentSettings();
         }
@@ -1708,8 +1766,8 @@ namespace TestXboxGameBar
             double contrast = ReadSetting(localSettings, ContrastSettingKey);
 
             _suppressVisualAdjustmentEvents = true;
-            BrightnessSlider.Value = brightness;
-            ContrastSlider.Value = contrast;
+            SelectPercentageOption(BrightnessSelector, brightness);
+            SelectPercentageOption(ContrastSelector, contrast);
             _suppressVisualAdjustmentEvents = false;
 
             UpdateVisualAdjustmentLabels(brightness, contrast);
@@ -1723,8 +1781,8 @@ namespace TestXboxGameBar
                 return;
             }
 
-            double brightness = BrightnessSlider.Value;
-            double contrast = ContrastSlider.Value;
+            double brightness = ReadSelectedPercentage(BrightnessSelector, DefaultBrightnessValue);
+            double contrast = ReadSelectedPercentage(ContrastSelector, DefaultContrastValue);
 
             Controls.KillConfirmAnimation.ConfigureRenderSettings(brightness / 100.0, contrast / 100.0);
 
@@ -1732,6 +1790,37 @@ namespace TestXboxGameBar
             localSettings.Values[BrightnessSettingKey] = brightness;
             localSettings.Values[ContrastSettingKey] = contrast;
             UpdateVisualAdjustmentLabels(brightness, contrast);
+        }
+
+        private static double ReadSelectedPercentage(ComboBox selector, double fallback)
+        {
+            if (selector.SelectedItem is ComboBoxItem item
+                && item.Tag is string tag
+                && double.TryParse(tag, out double value))
+            {
+                return value;
+            }
+
+            return fallback;
+        }
+
+        private static void SelectPercentageOption(ComboBox selector, double value)
+        {
+            double rounded = Math.Round(value / 10.0) * 10.0;
+
+            foreach (object option in selector.Items)
+            {
+                if (option is ComboBoxItem item
+                    && item.Tag is string tag
+                    && double.TryParse(tag, out double optionValue)
+                    && Math.Abs(optionValue - rounded) < 0.1)
+                {
+                    selector.SelectedItem = item;
+                    return;
+                }
+            }
+
+            selector.SelectedIndex = 0;
         }
 
         private static double ReadSetting(ApplicationDataContainer settings, string key)

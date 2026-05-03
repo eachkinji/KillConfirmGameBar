@@ -21,11 +21,30 @@
             <Setter Property="CornerRadius" Value="9" />
         </Style>
 
+        <Style x:Key="CompactIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="MinWidth" Value="24" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="#24303D" />
+            <Setter Property="Foreground" Value="#FFF8FAFC" />
+            <Setter Property="BorderBrush" Value="#3E5164" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+        </Style>
+
         <Style x:Key="OverlayComboBoxStyle" TargetType="ComboBox">
             <Setter Property="Height" Value="28" />
             <Setter Property="MinWidth" Value="88" />
             <Setter Property="Foreground" Value="#FFF8FAFC" />
             <Setter Property="Background" Value="#1E2833" />
+        </Style>
+
+        <Style x:Key="CompactComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource OverlayComboBoxStyle}">
+            <Setter Property="Height" Value="24" />
+            <Setter Property="MinWidth" Value="52" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Padding" Value="4,0" />
         </Style>
     </Page.Resources>
 
@@ -33,6 +52,7 @@
         <Grid
             x:Name="AnimationLayer"
             HorizontalAlignment="Stretch"
+            IsHitTestVisible="False"
             VerticalAlignment="Stretch"
             RenderTransformOrigin="0.5,0.5">
             <Grid.RenderTransform>
@@ -54,6 +74,7 @@
                 Margin="0,12,12,0"
                 Padding="10,4"
                 HorizontalAlignment="Right"
+                IsHitTestVisible="False"
                 VerticalAlignment="Top"
                 Background="#E8F59E0B"
                 BorderBrush="#55FFF7ED"
@@ -150,6 +171,7 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
@@ -171,9 +193,18 @@
                         <PathIcon Data="M2,8 L6,12 L14,3 M13,10 L13,14 L9,14" />
                     </Button>
 
+                    <Button
+                        x:Name="OpenGuideButton"
+                        Grid.Column="2"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnOpenGuideClick"
+                        ToolTipService.ToolTip="Open guide">
+                        <PathIcon Data="M3,2 L12,2 L12,14 L3,14 Z M5,5 L10,5 M5,8 L10,8 M5,11 L8,11" />
+                    </Button>
+
                     <Border
                         x:Name="ConnectionStatusBadge"
-                        Grid.Column="2"
+                        Grid.Column="3"
                         Width="46"
                         Height="28"
                         Background="#223040"
@@ -203,7 +234,7 @@
 
                     <Border
                         x:Name="CfgStatusBadge"
-                        Grid.Column="3"
+                        Grid.Column="4"
                         Width="46"
                         Height="28"
                         Background="#223040"
@@ -233,7 +264,7 @@
 
                     <Border
                         x:Name="GsiStatusBadge"
-                        Grid.Column="4"
+                        Grid.Column="5"
                         Width="46"
                         Height="28"
                         Background="#223040"
@@ -263,7 +294,7 @@
 
                     <TextBlock
                         x:Name="ReadinessText"
-                        Grid.Column="5"
+                        Grid.Column="6"
                         VerticalAlignment="Center"
                         FontSize="10"
                         FontWeight="SemiBold"
@@ -315,30 +346,15 @@
                     Grid.Row="3"
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="106" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-
-                    <Border
-                        Width="50"
-                        Height="28"
-                        Background="#1E2833"
-                        BorderBrush="#3E5164"
-                        BorderThickness="1"
-                        CornerRadius="9">
-                        <TextBlock
-                            x:Name="VoiceLabelText"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Foreground="#FFBFD0E3"
-                            Text="VOICE" />
-                    </Border>
 
                     <ComboBox
                         x:Name="VoicePackSelector"
-                        Grid.Column="1"
+                        Grid.Column="0"
                         Style="{StaticResource OverlayComboBoxStyle}"
                         HorizontalAlignment="Stretch"
                         SelectedIndex="0"
@@ -352,9 +368,54 @@
                         <ComboBoxItem x:Name="CrossfireWomenGrVoiceItem" Tag="crossfire_women_gr">women GR</ComboBoxItem>
                         <ComboBoxItem x:Name="CrossfireWomenBlVoiceItem" Tag="crossfire_women_bl">women BL</ComboBoxItem>
                     </ComboBox>
+
+                    <ComboBox
+                        x:Name="TestPresetSelector"
+                        Grid.Column="1"
+                        Style="{StaticResource OverlayComboBoxStyle}"
+                        HorizontalAlignment="Stretch"
+                        SelectedIndex="0"
+                        ToolTipService.ToolTip="Select preview or test preset">
+                        <ComboBoxItem Tag="one">1</ComboBoxItem>
+                        <ComboBoxItem Tag="one_hs">1 HS</ComboBoxItem>
+                        <ComboBoxItem Tag="one_knife">1 K</ComboBoxItem>
+                        <ComboBoxItem Tag="one_first">1 F</ComboBoxItem>
+                        <ComboBoxItem Tag="one_last">1 L</ComboBoxItem>
+                        <ComboBoxItem Tag="gold_first">GF</ComboBoxItem>
+                        <ComboBoxItem Tag="gold_last">GL</ComboBoxItem>
+                        <ComboBoxItem Tag="two">2</ComboBoxItem>
+                        <ComboBoxItem Tag="three">3</ComboBoxItem>
+                        <ComboBoxItem Tag="four">4</ComboBoxItem>
+                        <ComboBoxItem Tag="five">5</ComboBoxItem>
+                        <ComboBoxItem Tag="six">6</ComboBoxItem>
+                        <ComboBoxItem Tag="seven">7</ComboBoxItem>
+                        <ComboBoxItem Tag="eight">8</ComboBoxItem>
+                        <ComboBoxItem Tag="nine">9</ComboBoxItem>
+                        <ComboBoxItem Tag="badge_first">FK</ComboBoxItem>
+                        <ComboBoxItem Tag="badge_last">LK</ComboBoxItem>
+                    </ComboBox>
+
+                    <Button
+                        x:Name="PreviewButton"
+                        Grid.Column="2"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnPreviewClick"
+                        ToolTipService.ToolTip="Preview selected result">
+                        <PathIcon Data="M4,2 L13,8 L4,14 Z" />
+                    </Button>
+
+                    <Button
+                        x:Name="SendTestButton"
+                        Grid.Column="3"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnTestEventClick"
+                        ToolTipService.ToolTip="Send selected test event">
+                        <PathIcon Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z M11,5 L13,7 L13,9 L11,11 Z" />
+                    </Button>
                 </Grid>
 
                 <Grid
+                    x:Name="CfgActionRow"
                     Grid.Row="4"
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
@@ -427,120 +488,8 @@
                 </Grid>
 
                 <Grid
-                    Grid.Row="6"
-                    ColumnSpacing="6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <Border
-                        Width="50"
-                        Height="28"
-                        Background="#1E2833"
-                        BorderBrush="#3E5164"
-                        BorderThickness="1"
-                        CornerRadius="9">
-                        <TextBlock
-                            x:Name="TestLabelText"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Foreground="#FFBFD0E3"
-                            Text="TEST" />
-                    </Border>
-
-                    <ComboBox
-                        x:Name="TestPresetSelector"
-                        Grid.Column="1"
-                        Style="{StaticResource OverlayComboBoxStyle}"
-                        HorizontalAlignment="Stretch"
-                        SelectedIndex="0"
-                        ToolTipService.ToolTip="Select preview or test preset">
-                        <ComboBoxItem Tag="one">1</ComboBoxItem>
-                        <ComboBoxItem Tag="one_hs">1 HS</ComboBoxItem>
-                        <ComboBoxItem Tag="one_knife">1 K</ComboBoxItem>
-                        <ComboBoxItem Tag="one_first">1 F</ComboBoxItem>
-                        <ComboBoxItem Tag="one_last">1 L</ComboBoxItem>
-                        <ComboBoxItem Tag="gold_first">GF</ComboBoxItem>
-                        <ComboBoxItem Tag="gold_last">GL</ComboBoxItem>
-                        <ComboBoxItem Tag="two">2</ComboBoxItem>
-                        <ComboBoxItem Tag="three">3</ComboBoxItem>
-                        <ComboBoxItem Tag="four">4</ComboBoxItem>
-                        <ComboBoxItem Tag="five">5</ComboBoxItem>
-                        <ComboBoxItem Tag="six">6</ComboBoxItem>
-                        <ComboBoxItem Tag="seven">7</ComboBoxItem>
-                        <ComboBoxItem Tag="eight">8</ComboBoxItem>
-                        <ComboBoxItem Tag="nine">9</ComboBoxItem>
-                        <ComboBoxItem Tag="badge_first">FK</ComboBoxItem>
-                        <ComboBoxItem Tag="badge_last">LK</ComboBoxItem>
-                    </ComboBox>
-
-                    <Button
-                        x:Name="PreviewButton"
-                        Grid.Column="2"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
-                        Click="OnPreviewClick"
-                        ToolTipService.ToolTip="Preview selected result">
-                        <PathIcon Data="M4,2 L13,8 L4,14 Z" />
-                    </Button>
-
-                </Grid>
-
-                <Grid
                     Grid.Row="5"
-                    ColumnSpacing="6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="50" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <Border
-                        Width="50"
-                        Height="28"
-                        Background="#1E2833"
-                        BorderBrush="#3E5164"
-                        BorderThickness="1"
-                        CornerRadius="9">
-                        <PathIcon
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Foreground="#FFBFD0E3"
-                            Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z" />
-                    </Border>
-
-                    <Button
-                        x:Name="SendTestButton"
-                        Grid.Column="1"
-                        Height="28"
-                        HorizontalAlignment="Stretch"
-                        Padding="10,0"
-                        Background="#24303D"
-                        BorderBrush="#3E5164"
-                        BorderThickness="1"
-                        Click="OnTestEventClick"
-                        CornerRadius="9"
-                        Foreground="#FFF8FAFC"
-                        ToolTipService.ToolTip="Send selected test event">
-                        <StackPanel
-                            HorizontalAlignment="Center"
-                            Orientation="Horizontal"
-                            Spacing="6">
-                            <PathIcon Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z M11,5 L13,7 L13,9 L11,11 Z" />
-                            <TextBlock
-                                x:Name="SendTestButtonText"
-                                FontSize="10"
-                                FontWeight="SemiBold"
-                                Text="Send service test" />
-                        </StackPanel>
-                    </Button>
-                </Grid>
-
-                <Grid
-                    Grid.Row="7"
-                    ColumnSpacing="6">
+                    ColumnSpacing="3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -550,30 +499,17 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-
-                    <Border
-                        Grid.Column="0"
-                        Width="50"
-                        Height="28"
-                        Background="#1E2833"
-                        BorderBrush="#3E5164"
-                        BorderThickness="1"
-                        CornerRadius="9">
-                        <TextBlock
-                            x:Name="ViewLabelText"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            FontSize="10"
-                            FontWeight="SemiBold"
-                            Foreground="#FFBFD0E3"
-                            Text="VIEW" />
-                    </Border>
 
                     <Button
                         x:Name="DefaultSizeButton"
-                        Grid.Column="1"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Grid.Column="0"
+                        Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnResizeClick"
                         ToolTipService.ToolTip="Default size">
                         <PathIcon Data="M3,3 L13,3 L13,13 L3,13 Z M5,5 L11,5 L11,11 L5,11 Z" />
@@ -581,8 +517,8 @@
 
                     <Button
                         x:Name="CenterButton"
-                        Grid.Column="2"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Grid.Column="1"
+                        Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnCenterClick"
                         ToolTipService.ToolTip="Center window">
                         <PathIcon Data="M8,1 L8,15 M1,8 L15,8 M4,4 L12,4 L12,12 L4,12 Z" />
@@ -590,8 +526,8 @@
 
                     <Button
                         x:Name="LowerThirdButton"
-                        Grid.Column="3"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Grid.Column="2"
+                        Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnLowerThirdClick"
                         ToolTipService.ToolTip="Place icon at bottom">
                         <PathIcon Data="M8,2 L13,7 L10,7 L10,10 L6,10 L6,7 L3,7 Z M2,12 L14,12 L14,14 L2,14 Z" />
@@ -599,8 +535,8 @@
 
                     <Button
                         x:Name="MoveUpButton"
-                        Grid.Column="4"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Grid.Column="3"
+                        Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnMoveUpClick"
                         ToolTipService.ToolTip="Move icon up">
                         <PathIcon Data="M8,2 L14,10 L10,10 L10,15 L6,15 L6,10 L2,10 Z" />
@@ -608,8 +544,8 @@
 
                     <Button
                         x:Name="MoveDownButton"
-                        Grid.Column="5"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Grid.Column="4"
+                        Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnMoveDownClick"
                         ToolTipService.ToolTip="Move icon down">
                         <PathIcon Data="M6,1 L10,1 L10,6 L14,6 L8,14 L2,6 L6,6 Z" />
@@ -617,8 +553,8 @@
 
                     <Button
                         x:Name="ScaleDownButton"
-                        Grid.Column="6"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Grid.Column="5"
+                        Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnScaleDownClick"
                         ToolTipService.ToolTip="Shrink icon">
                         <PathIcon Data="M3,7 L13,7 L13,9 L3,9 Z" />
@@ -626,68 +562,67 @@
 
                     <Button
                         x:Name="ScaleUpButton"
-                        Grid.Column="7"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Grid.Column="6"
+                        Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnScaleUpClick"
                         ToolTipService.ToolTip="Enlarge icon">
                         <PathIcon Data="M7,3 L9,3 L9,7 L13,7 L13,9 L9,9 L9,13 L7,13 L7,9 L3,9 L3,7 L7,7 Z" />
                     </Button>
-                </Grid>
-
-                <Grid
-                    Grid.Row="8"
-                    ColumnSpacing="6"
-                    VerticalAlignment="Center">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
 
                     <PathIcon
                         x:Name="BrightnessIcon"
-                        Grid.Column="0"
-                        Width="18"
-                        Height="18"
+                        Grid.Column="7"
+                        Width="16"
+                        Height="16"
                         Foreground="#FFFFE7A3"
                         Data="M8,1 L10,5 L14,6 L11,9 L12,14 L8,12 L4,14 L5,9 L2,6 L6,5 Z"
                         ToolTipService.ToolTip="Animation brightness" />
 
-                    <Slider
-                        x:Name="BrightnessSlider"
-                        Grid.Column="1"
-                        Height="20"
-                        Minimum="0"
-                        Maximum="100"
-                        StepFrequency="5"
-                        ValueChanged="OnBrightnessValueChanged"
-                        ToolTipService.ToolTip="Animation brightness" />
+                    <ComboBox
+                        x:Name="BrightnessSelector"
+                        Grid.Column="8"
+                        Width="46"
+                        Style="{StaticResource CompactComboBoxStyle}"
+                        SelectionChanged="OnBrightnessSelectionChanged"
+                        ToolTipService.ToolTip="Animation brightness">
+                        <ComboBoxItem Tag="40">40%</ComboBoxItem>
+                        <ComboBoxItem Tag="50">50%</ComboBoxItem>
+                        <ComboBoxItem Tag="60">60%</ComboBoxItem>
+                        <ComboBoxItem Tag="70">70%</ComboBoxItem>
+                        <ComboBoxItem Tag="80">80%</ComboBoxItem>
+                        <ComboBoxItem Tag="90">90%</ComboBoxItem>
+                        <ComboBoxItem Tag="100">100%</ComboBoxItem>
+                    </ComboBox>
 
                     <PathIcon
                         x:Name="ContrastIcon"
-                        Grid.Column="2"
-                        Width="18"
-                        Height="18"
+                        Grid.Column="9"
+                        Width="16"
+                        Height="16"
                         Foreground="#FFE5E7EB"
                         Data="M2,2 L14,2 L14,14 L2,14 Z M8,2 L14,2 L14,14 L8,14 Z"
                         ToolTipService.ToolTip="Animation contrast" />
 
-                    <Slider
-                        x:Name="ContrastSlider"
-                        Grid.Column="3"
-                        Height="20"
-                        Minimum="0"
-                        Maximum="100"
-                        StepFrequency="5"
-                        ValueChanged="OnContrastValueChanged"
-                        ToolTipService.ToolTip="Animation contrast" />
+                    <ComboBox
+                        x:Name="ContrastSelector"
+                        Grid.Column="10"
+                        Width="46"
+                        Style="{StaticResource CompactComboBoxStyle}"
+                        SelectionChanged="OnContrastSelectionChanged"
+                        ToolTipService.ToolTip="Animation contrast">
+                        <ComboBoxItem Tag="40">40%</ComboBoxItem>
+                        <ComboBoxItem Tag="50">50%</ComboBoxItem>
+                        <ComboBoxItem Tag="60">60%</ComboBoxItem>
+                        <ComboBoxItem Tag="70">70%</ComboBoxItem>
+                        <ComboBoxItem Tag="80">80%</ComboBoxItem>
+                        <ComboBoxItem Tag="90">90%</ComboBoxItem>
+                        <ComboBoxItem Tag="100">100%</ComboBoxItem>
+                    </ComboBox>
 
                     <Button
                         x:Name="ResetVisualButton"
-                        Grid.Column="4"
-                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Grid.Column="11"
+                        Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnResetVisualAdjustmentsClick"
                         ToolTipService.ToolTip="Reset visual adjustments">
                         <PathIcon Data="M8,1 L14,4 L8,7 L8,4 A4,4 0 1 0 12,8 L14,8 A6,6 0 1 1 8,2 Z" />

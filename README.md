@@ -1,5 +1,24 @@
 # KillConfirmGameBar
 
+## Roadmap
+
+Implemented today:
+
+- Kill voice lines for CS2 kill events.
+- Kill confirmation icons and animated overlay effects.
+
+Planned work:
+
+- Code-driven kill effects for broader icon compatibility. The current overlay still uses animation frame assets.
+- More character voice packs.
+- A more complete settings panel, including finer animation frame-rate controls.
+- More in-match voice events, such as C4 events, round-start voice lines, and round-end voice lines.
+
+## Important Notes
+
+- The overlay listens on a local port for CS2 Game State Integration events. System-wide proxy tools can prevent the local service from receiving events. If the widget starts but kills do not trigger any sound or icon, turn off the system proxy before playing.
+- This is especially relevant for proxy clients such as Clash-style tools. Add this note to video descriptions and setup guides so users know to disable the system proxy when troubleshooting.
+
 夸克网盘：
 链接：https://pan.quark.cn/s/0f1f493e93f9?pwd=DFY8
 提取码：DFY8
@@ -20,9 +39,10 @@ It plays voice lines and shows animated effects when CS2 reports kills through G
 
 Current voice packs:
 
-- `cf`
-- `cffhd`
+- `swat GR / swat BL`
+- `tiger GR / tiger BL`
 - `cfsex`
+- `women GR / women BL`
 
 ## Requirements
 

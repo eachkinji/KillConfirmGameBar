@@ -9,7 +9,7 @@
   <Identity
     Name="KillConfirmGameBar.Overlay"
     Publisher="CN=TestXboxGameBar"
-    Version="1.0.0.88" />
+    Version="1.0.0.91" />
 
   <mp:PhoneIdentity PhoneProductId="8f70c4bd-4270-4a4f-a7d1-91ae48dbe9f4" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
@@ -74,6 +74,9 @@
             </uap3:Properties>
           </uap3:AppExtension>
         </uap3:Extension>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="killconfirmoverlay" />
+        </uap:Extension>
       </Extensions>
     </Application>
   </Applications>
