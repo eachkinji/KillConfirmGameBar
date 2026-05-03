@@ -5,6 +5,9 @@
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 # KillConfirmGameBar
+KillConfirmGameBar is a Counter-Strike 2 kill-confirm overlay for Xbox Game Bar.
+
+It plays voice lines and shows animated effects when CS2 reports kills through Game State Integration. The overlay runs inside Xbox Game Bar, so it can stay on top while you play.
 
 ## Roadmap
 
@@ -24,10 +27,6 @@ Planned work:
 
 - The overlay listens on a local port for CS2 Game State Integration events. System-wide proxy tools can prevent the local service from receiving events. If the widget starts but kills do not trigger any sound or icon, turn off the system proxy before playing.
 - This is especially relevant for proxy clients such as Clash-style tools. Add this note to video descriptions and setup guides so users know to disable the system proxy when troubleshooting.
-
-KillConfirmGameBar is a Counter-Strike 2 kill-confirm overlay for Xbox Game Bar.
-
-It plays voice lines and shows animated effects when CS2 reports kills through Game State Integration. The overlay runs inside Xbox Game Bar, so it can stay on top while you play.
 
 ## Features
 
