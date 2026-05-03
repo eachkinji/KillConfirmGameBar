@@ -33,6 +33,7 @@ namespace TestXboxGameBar
         private static readonly Size MaxWidgetSize = new Size(400, 720);
         private const double AnimationOffsetStep = 12.0;
         private const double MaxAnimationOffsetRatio = 0.45;
+        private const double BottomFifthAnimationOffsetRatio = 0.30;
         private const double ScaleUpFactor = 1.1;
         private const double ScaleDownFactor = 0.9;
         private const int StartupPreloadDelayMs = 250;
@@ -79,6 +80,7 @@ namespace TestXboxGameBar
             " }\r\n" +
             "}\r\n";
         private const int ControlPanelStateRefreshMs = 250;
+        private const int StatusHintRotationMs = 5000;
         private const string PackagedServiceParameterGroupId = "CrossfirePreset";
         private const string FullTrustProcessLauncherRuntimeClass = "Windows.ApplicationModel.FullTrustProcessLauncher";
         private static readonly System.Guid FullTrustProcessLauncherStaticsGuid =
@@ -137,9 +139,14 @@ namespace TestXboxGameBar
         private bool _gsiRecentlySeen;
         private bool _gsiStatusCheckPending;
         private int _animationPreloadToken;
+        private int _animationCacheProgress;
+        private bool _animationCacheReady;
+        private bool _animationCacheFailed;
+        private int _statusHintIndex;
         private DateTimeOffset _lastGsiStatusCheck = DateTimeOffset.MinValue;
         private readonly DispatcherTimer _controlPanelStateTimer;
         private readonly DispatcherTimer _streakBadgeTimer;
+        private readonly DispatcherTimer _statusHintTimer;
 
         public ClockWidgetPage()
         {
@@ -160,6 +167,12 @@ namespace TestXboxGameBar
                 Interval = TimeSpan.FromMilliseconds(StreakBadgeDisplayDurationMs)
             };
             _streakBadgeTimer.Tick += OnStreakBadgeTimerTick;
+
+            _statusHintTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(StatusHintRotationMs)
+            };
+            _statusHintTimer.Tick += OnStatusHintTimerTick;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -178,6 +191,7 @@ namespace TestXboxGameBar
             LoadAnimationPlacementSettings();
             LoadVoicePackSetting();
             _controlPanelStateTimer.Start();
+            _statusHintTimer.Start();
 
             StartKillEventClient();
             ConfigureWidgetCapabilities();
@@ -199,6 +213,7 @@ namespace TestXboxGameBar
 
             _controlPanelStateTimer.Stop();
             _streakBadgeTimer.Stop();
+            _statusHintTimer.Stop();
             _widget = null;
             HideStreakBadge();
             _ = RequestServiceShutdownAsync();
@@ -372,8 +387,7 @@ namespace TestXboxGameBar
         private void ShowGuideOpenFailedHint()
         {
             string hint = LocalizationManager.Text("OpenGuideFailed");
-            ReadinessText.Text = hint;
-            ToolTipService.SetToolTip(ReadinessText, hint);
+            ShowStatusHint(hint, Color.FromArgb(255, 251, 191, 36));
         }
 
         private async void OnOpenLogsClick(object sender, RoutedEventArgs e)
@@ -516,6 +530,11 @@ namespace TestXboxGameBar
             {
                 _ = RefreshGsiStatusAsync();
             }
+        }
+
+        private void OnStatusHintTimerTick(object sender, object e)
+        {
+            AdvanceStatusHint();
         }
 
         private void OnStreakBadgeTimerTick(object sender, object e)
@@ -736,8 +755,7 @@ namespace TestXboxGameBar
 
         private void ApplyLanguage()
         {
-            PinHintText.Text = LocalizationManager.Text("PinHint");
-            ToolTipService.SetToolTip(PinHintText, LocalizationManager.Text("PinHintTooltip"));
+            RefreshStatusHint(true);
             ToolTipService.SetToolTip(LanguageSelector, "Language / 语言");
 
             ToolTipService.SetToolTip(StartServiceButton, LocalizationManager.Text("StartServiceTooltip"));
@@ -1368,34 +1386,47 @@ namespace TestXboxGameBar
         private void UpdateAnimationCacheProgress(int percent)
         {
             int value = Math.Max(0, Math.Min(100, percent));
-            AnimationCacheRing.IsActive = true;
-            AnimationCacheRing.Visibility = Visibility.Visible;
-            AnimationCacheDot.Visibility = Visibility.Collapsed;
-            AnimationCacheBadgeText.Text = value + "%";
+            _animationCacheProgress = value;
+            _animationCacheReady = false;
+            _animationCacheFailed = false;
+
+            if (value >= 100)
+            {
+                UpdateAnimationCacheReady();
+                return;
+            }
+
+            AnimationCacheDot.Visibility = Visibility.Visible;
+            AnimationCacheDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
+            AnimationCacheBadgeText.Text = value <= 0 ? "ANI" : value + "%";
             AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
             ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheLoading") + value + "%");
+            RefreshStatusHint(false);
         }
 
         private void UpdateAnimationCacheReady()
         {
-            AnimationCacheRing.IsActive = false;
-            AnimationCacheRing.Visibility = Visibility.Collapsed;
+            _animationCacheProgress = 100;
+            _animationCacheReady = true;
+            _animationCacheFailed = false;
             AnimationCacheDot.Visibility = Visibility.Visible;
             AnimationCacheDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
             AnimationCacheBadgeText.Text = "ANI";
             AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 191, 208, 227));
             ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheReady"));
+            RefreshStatusHint(false);
         }
 
         private void UpdateAnimationCacheFailed()
         {
-            AnimationCacheRing.IsActive = false;
-            AnimationCacheRing.Visibility = Visibility.Collapsed;
+            _animationCacheReady = false;
+            _animationCacheFailed = true;
             AnimationCacheDot.Visibility = Visibility.Visible;
             AnimationCacheDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
             AnimationCacheBadgeText.Text = "ANI";
             AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 191, 208, 227));
             ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheFailed"));
+            RefreshStatusHint(false);
         }
 
         private void HandleKillEvent(KillEvent killEvent)
@@ -1588,7 +1619,13 @@ namespace TestXboxGameBar
 
         private double GetBottomOffset()
         {
-            return GetMaxAnimationOffset();
+            double layerHeight = AnimationLayer.ActualHeight;
+            if (layerHeight <= 0)
+            {
+                layerHeight = DefaultWidgetSize.Height;
+            }
+
+            return Math.Max(AnimationOffsetStep, layerHeight * BottomFifthAnimationOffsetRatio);
         }
 
         private double GetMaxAnimationOffset()
@@ -1659,7 +1696,7 @@ namespace TestXboxGameBar
                     break;
             }
 
-            UpdateReadinessText();
+            RefreshStatusHint(false);
         }
 
         private void UpdateCfgStatus(CfgDetectionState state, string label, string detail)
@@ -1699,7 +1736,7 @@ namespace TestXboxGameBar
                     break;
             }
 
-            UpdateReadinessText();
+            RefreshStatusHint(false);
         }
 
         private void UpdateGsiStatus(bool serviceReachable, bool recentlySeen, double posts, double? ageMs)
@@ -1727,25 +1764,195 @@ namespace TestXboxGameBar
                 ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("ServiceOffline"));
             }
 
-            UpdateReadinessText();
+            RefreshStatusHint(false);
         }
 
-        private void UpdateReadinessText()
+        private void AdvanceStatusHint()
         {
-            bool serviceReady = _serviceConnectionState == KillEventConnectionState.Connected;
-            bool cfgReady = _cfgDetectionState == CfgDetectionState.Ready;
-
-            if (serviceReady && cfgReady && _gsiRecentlySeen)
+            IReadOnlyList<StatusHint> hints = BuildStatusHints();
+            if (hints.Count == 0)
             {
-                ReadinessText.Text = LocalizationManager.Text("ReadyAllSignals");
-                ReadinessText.Foreground = new SolidColorBrush(Color.FromArgb(255, 167, 243, 208));
                 return;
             }
 
-            ReadinessText.Text = serviceReady && cfgReady
-                ? LocalizationManager.Text("WaitingGsi")
-                : LocalizationManager.Text("NeedBothLights");
-            ReadinessText.Foreground = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
+            _statusHintIndex = (_statusHintIndex + 1) % hints.Count;
+            ApplyStatusHint(hints[_statusHintIndex]);
+        }
+
+        private void RefreshStatusHint(bool resetCycle)
+        {
+            IReadOnlyList<StatusHint> hints = BuildStatusHints();
+            if (hints.Count == 0)
+            {
+                return;
+            }
+
+            if (resetCycle)
+            {
+                _statusHintIndex = 0;
+            }
+            else if (_statusHintIndex >= hints.Count)
+            {
+                _statusHintIndex = 0;
+            }
+
+            ApplyStatusHint(hints[_statusHintIndex]);
+        }
+
+        private IReadOnlyList<StatusHint> BuildStatusHints()
+        {
+            var hints = new List<StatusHint>();
+
+            if (ShouldPrioritizePinHint())
+            {
+                hints.Add(new StatusHint(LocalizationManager.Text("PinHint"), Color.FromArgb(255, 251, 191, 36)));
+            }
+
+            bool serviceReady = _serviceConnectionState == KillEventConnectionState.Connected;
+            bool cfgReady = _cfgDetectionState == CfgDetectionState.Ready;
+            bool animationReady = _animationCacheReady;
+
+            if (serviceReady && cfgReady && _gsiRecentlySeen && animationReady)
+            {
+                hints.Add(new StatusHint(LocalizationManager.Text("ReadyAllSignals"), Color.FromArgb(255, 167, 243, 208)));
+            }
+
+            hints.Add(new StatusHint(GetServiceStatusHint(), GetServiceHintColor()));
+            hints.Add(new StatusHint(GetCfgStatusHint(), GetCfgHintColor()));
+            hints.Add(new StatusHint(GetGsiStatusHint(), GetGsiHintColor()));
+            hints.Add(new StatusHint(GetAnimationStatusHint(), GetAnimationHintColor()));
+
+            return hints;
+        }
+
+        private bool ShouldPrioritizePinHint()
+        {
+            return _displayMode == XboxGameBarDisplayMode.Foreground;
+        }
+
+        private void ApplyStatusHint(StatusHint hint)
+        {
+            ShowStatusHint(hint.Text, hint.Color);
+        }
+
+        private void ShowStatusHint(string text, Color color)
+        {
+            PinHintText.Text = text;
+            PinHintText.Foreground = new SolidColorBrush(color);
+            ToolTipService.SetToolTip(StatusHintBox, text);
+        }
+
+        private string GetServiceStatusHint()
+        {
+            switch (_serviceConnectionState)
+            {
+                case KillEventConnectionState.Connected:
+                    return LocalizationManager.Text("StatusSvcReady");
+                case KillEventConnectionState.Connecting:
+                    return LocalizationManager.Text("StatusSvcStarting");
+                default:
+                    return LocalizationManager.Text("StatusSvcOffline");
+            }
+        }
+
+        private Color GetServiceHintColor()
+        {
+            switch (_serviceConnectionState)
+            {
+                case KillEventConnectionState.Connected:
+                    return Color.FromArgb(255, 167, 243, 208);
+                case KillEventConnectionState.Connecting:
+                    return Color.FromArgb(255, 251, 191, 36);
+                default:
+                    return Color.FromArgb(255, 248, 113, 113);
+            }
+        }
+
+        private string GetCfgStatusHint()
+        {
+            switch (_cfgDetectionState)
+            {
+                case CfgDetectionState.Ready:
+                    return LocalizationManager.Text("StatusCfgReady");
+                case CfgDetectionState.Checking:
+                    return LocalizationManager.Text("StatusCfgChecking");
+                case CfgDetectionState.Missing:
+                    return LocalizationManager.Text("StatusCfgMissing");
+                case CfgDetectionState.Error:
+                    return LocalizationManager.Text("StatusCfgError");
+                default:
+                    return LocalizationManager.Text("StatusCfgSelect");
+            }
+        }
+
+        private Color GetCfgHintColor()
+        {
+            switch (_cfgDetectionState)
+            {
+                case CfgDetectionState.Ready:
+                    return Color.FromArgb(255, 167, 243, 208);
+                case CfgDetectionState.Error:
+                    return Color.FromArgb(255, 248, 113, 113);
+                default:
+                    return Color.FromArgb(255, 251, 191, 36);
+            }
+        }
+
+        private string GetGsiStatusHint()
+        {
+            if (_gsiRecentlySeen)
+            {
+                return LocalizationManager.Text("StatusGsiReady");
+            }
+
+            if (_serviceConnectionState != KillEventConnectionState.Connected)
+            {
+                return LocalizationManager.Text("StatusGsiNeedsService");
+            }
+
+            return LocalizationManager.Text("StatusGsiWaiting");
+        }
+
+        private Color GetGsiHintColor()
+        {
+            if (_gsiRecentlySeen)
+            {
+                return Color.FromArgb(255, 167, 243, 208);
+            }
+
+            return _serviceConnectionState == KillEventConnectionState.Connected
+                ? Color.FromArgb(255, 251, 191, 36)
+                : Color.FromArgb(255, 107, 114, 128);
+        }
+
+        private string GetAnimationStatusHint()
+        {
+            if (_animationCacheReady)
+            {
+                return LocalizationManager.Text("StatusAniReady");
+            }
+
+            if (_animationCacheFailed)
+            {
+                return LocalizationManager.Text("StatusAniFailed");
+            }
+
+            return LocalizationManager.Text("StatusAniLoading") + Math.Max(0, Math.Min(99, _animationCacheProgress)) + "%";
+        }
+
+        private Color GetAnimationHintColor()
+        {
+            if (_animationCacheReady)
+            {
+                return Color.FromArgb(255, 167, 243, 208);
+            }
+
+            if (_animationCacheFailed)
+            {
+                return Color.FromArgb(255, 248, 113, 113);
+            }
+
+            return Color.FromArgb(255, 251, 191, 36);
         }
 
         private static string ResolveCfgStatusLabel(CfgDetectionState state)
@@ -1996,6 +2203,19 @@ namespace TestXboxGameBar
             Ready,
             Missing,
             Error
+        }
+
+        private sealed class StatusHint
+        {
+            public StatusHint(string text, Color color)
+            {
+                Text = text;
+                Color = color;
+            }
+
+            public string Text { get; }
+
+            public Color Color { get; }
         }
 
         private sealed class TestPreset

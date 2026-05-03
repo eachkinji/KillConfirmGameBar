@@ -34,17 +34,21 @@
         </Style>
 
         <Style x:Key="OverlayComboBoxStyle" TargetType="ComboBox">
-            <Setter Property="Height" Value="28" />
+            <Setter Property="Height" Value="32" />
             <Setter Property="MinWidth" Value="88" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="FontSize" Value="15" />
             <Setter Property="Foreground" Value="#FFF8FAFC" />
             <Setter Property="Background" Value="#1E2833" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
         <Style x:Key="CompactComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource OverlayComboBoxStyle}">
-            <Setter Property="Height" Value="24" />
-            <Setter Property="MinWidth" Value="52" />
-            <Setter Property="FontSize" Value="10" />
-            <Setter Property="Padding" Value="4,0" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinWidth" Value="54" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="6,0" />
         </Style>
     </Page.Resources>
 
@@ -96,7 +100,8 @@
             Padding="6"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
-            MaxWidth="360"
+            Width="400"
+            MaxWidth="400"
             Background="#E711161D"
             BorderBrush="#3D4D61"
             BorderThickness="1"
@@ -117,25 +122,34 @@
                 <Grid ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="96" />
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock
-                        x:Name="PinHintText"
+                    <Border
+                        x:Name="StatusHintBox"
+                        Height="28"
                         VerticalAlignment="Center"
-                        FontSize="10"
-                        FontWeight="SemiBold"
-                        Foreground="#FFFFE7A3"
-                        Text="Pin the widget in the top-right to keep the icon on screen."
-                        TextTrimming="CharacterEllipsis"
-                        ToolTipService.ToolTip="Click the pin button in Xbox Game Bar's top-right corner." />
+                        Padding="8,0"
+                        Background="#1E2833"
+                        BorderBrush="#3E5164"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        ToolTipService.ToolTip="Click the pin button in Xbox Game Bar's top-right corner.">
+                        <TextBlock
+                            x:Name="PinHintText"
+                            VerticalAlignment="Center"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            Foreground="#FFFFE7A3"
+                            Text="Pin the widget in the top-right to keep the icon on screen."
+                            TextTrimming="CharacterEllipsis" />
+                    </Border>
 
                     <ComboBox
                         x:Name="LanguageSelector"
                         Grid.Column="1"
-                        Width="78"
-                        Height="28"
+                        Style="{StaticResource OverlayComboBoxStyle}"
                         SelectedIndex="0"
                         SelectionChanged="OnLanguageSelectionChanged"
                         ToolTipService.ToolTip="Language">
@@ -145,6 +159,7 @@
 
                     <Border
                         Grid.Column="2"
+                        Width="96"
                         Padding="8,0"
                         Height="28"
                         VerticalAlignment="Center"
@@ -173,7 +188,6 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
                     <Button
@@ -206,7 +220,7 @@
                     <Border
                         x:Name="ConnectionStatusBadge"
                         Grid.Column="3"
-                        Width="46"
+                        Width="54"
                         Height="28"
                         Background="#223040"
                         BorderBrush="#3E5164"
@@ -236,7 +250,7 @@
                     <Border
                         x:Name="CfgStatusBadge"
                         Grid.Column="4"
-                        Width="46"
+                        Width="54"
                         Height="28"
                         Background="#223040"
                         BorderBrush="#3E5164"
@@ -296,7 +310,7 @@
                     <Border
                         x:Name="AnimationCacheStatusBadge"
                         Grid.Column="6"
-                        Width="54"
+                        Width="46"
                         Height="28"
                         Background="#223040"
                         BorderBrush="#3E5164"
@@ -307,20 +321,13 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
-                            Spacing="4">
-                            <ProgressRing
-                                x:Name="AnimationCacheRing"
-                                Width="10"
-                                Height="10"
-                                Foreground="#FFFBBF24"
-                                IsActive="False" />
+                            Spacing="5">
                             <Border
                                 x:Name="AnimationCacheDot"
                                 Width="8"
                                 Height="8"
                                 Background="#FF6B7280"
-                                CornerRadius="4"
-                                Visibility="Collapsed" />
+                                CornerRadius="4" />
                             <TextBlock
                                 x:Name="AnimationCacheBadgeText"
                                 FontSize="9"
@@ -329,16 +336,6 @@
                                 Text="ANI" />
                         </StackPanel>
                     </Border>
-
-                    <TextBlock
-                        x:Name="ReadinessText"
-                        Grid.Column="7"
-                        VerticalAlignment="Center"
-                        FontSize="10"
-                        FontWeight="SemiBold"
-                        Foreground="#FFFBBF24"
-                        Text="Need both green lights before playing"
-                        TextTrimming="CharacterEllipsis" />
                 </Grid>
 
                 <Grid
@@ -384,8 +381,8 @@
                     Grid.Row="3"
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="106" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="2.4*" />
+                        <ColumnDefinition Width="0.7*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -411,7 +408,7 @@
                         x:Name="TestPresetSelector"
                         Grid.Column="1"
                         Style="{StaticResource OverlayComboBoxStyle}"
-                        HorizontalAlignment="Stretch"
+                        MinWidth="60"
                         SelectedIndex="0"
                         ToolTipService.ToolTip="Select preview or test preset">
                         <ComboBoxItem Tag="one">1</ComboBoxItem>
