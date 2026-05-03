@@ -1,7 +1,7 @@
 using Microsoft.Gaming.XboxGameBar;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using TestXboxGameBar.Services;
@@ -79,6 +79,9 @@ namespace TestXboxGameBar
             "}\r\n";
         private const int ControlPanelStateRefreshMs = 250;
         private const string PackagedServiceParameterGroupId = "CrossfirePreset";
+        private const string FullTrustProcessLauncherRuntimeClass = "Windows.ApplicationModel.FullTrustProcessLauncher";
+        private static readonly System.Guid FullTrustProcessLauncherStaticsGuid =
+            new System.Guid("D784837F-1100-3C6B-A455-F6262CC331B6");
         private const int GsiStatusRefreshMs = 10000;
         private const double RecentGsiAgeMs = 120000;
         private static readonly Uri ServiceHealthUri = new Uri("http://127.0.0.1:3000/health");
@@ -809,49 +812,10 @@ namespace TestXboxGameBar
                     return false;
                 }
 
-                Type launcherType = Type.GetType(
-                    "Windows.ApplicationModel.FullTrustProcessLauncher, Windows, ContentType=WindowsRuntime");
-                if (launcherType == null)
+                IAsyncAction launchAction = LaunchFullTrustProcessForCurrentAppWithParameters(PackagedServiceParameterGroupId);
+                if (launchAction == null)
                 {
-                    launcherType = Type.GetType(
-                        "Windows.ApplicationModel.FullTrustProcessLauncher, Windows.ApplicationModel.FullTrustAppContract, ContentType=WindowsRuntime");
-                }
-                if (launcherType == null)
-                {
-                    launcherType = Type.GetType("Windows.ApplicationModel.FullTrustProcessLauncher, Windows.ApplicationModel");
-                }
-                if (launcherType == null)
-                {
-                    App.Log("Could not resolve FullTrustProcessLauncher runtime type.");
-                    return false;
-                }
-
-                MethodInfo launchMethod = null;
-                foreach (MethodInfo method in launcherType.GetRuntimeMethods())
-                {
-                    if (method.Name != "LaunchFullTrustProcessForCurrentAppAsync")
-                    {
-                        continue;
-                    }
-
-                    ParameterInfo[] parameters = method.GetParameters();
-                    if (parameters.Length == 1 && parameters[0].ParameterType == typeof(string))
-                    {
-                        launchMethod = method;
-                        break;
-                    }
-                }
-
-                if (launchMethod == null)
-                {
-                    App.Log("Could not resolve FullTrustProcessLauncher.LaunchFullTrustProcessForCurrentAppAsync(string).");
-                    return false;
-                }
-
-                object launchResult = launchMethod.Invoke(null, new object[] { PackagedServiceParameterGroupId });
-                if (!(launchResult is IAsyncAction launchAction))
-                {
-                    App.Log("FullTrustProcessLauncher returned an unexpected result type.");
+                    App.Log("FullTrustProcessLauncher returned no launch action.");
                     return false;
                 }
 
@@ -868,6 +832,76 @@ namespace TestXboxGameBar
                     + ", detail=" + ex);
                 return false;
             }
+        }
+
+        private static IAsyncAction LaunchFullTrustProcessForCurrentAppWithParameters(string parameterGroupId)
+        {
+            IntPtr runtimeClassName = IntPtr.Zero;
+            IFullTrustProcessLauncherStatics launcherStatics = null;
+
+            try
+            {
+                int hr = WindowsCreateString(
+                    FullTrustProcessLauncherRuntimeClass,
+                    FullTrustProcessLauncherRuntimeClass.Length,
+                    out runtimeClassName);
+                Marshal.ThrowExceptionForHR(hr);
+
+                System.Guid iid = FullTrustProcessLauncherStaticsGuid;
+                hr = RoGetActivationFactory(runtimeClassName, ref iid, out launcherStatics);
+                Marshal.ThrowExceptionForHR(hr);
+
+                return launcherStatics.LaunchFullTrustProcessForCurrentAppWithParametersAsync(parameterGroupId);
+            }
+            finally
+            {
+                if (runtimeClassName != IntPtr.Zero)
+                {
+                    WindowsDeleteString(runtimeClassName);
+                }
+
+                if (launcherStatics != null)
+                {
+                    Marshal.ReleaseComObject(launcherStatics);
+                }
+            }
+        }
+
+        [DllImport("api-ms-win-core-winrt-string-l1-1-0.dll", ExactSpelling = true)]
+        private static extern int WindowsCreateString(
+            [MarshalAs(UnmanagedType.LPWStr)] string sourceString,
+            int length,
+            out IntPtr hstring);
+
+        [DllImport("api-ms-win-core-winrt-string-l1-1-0.dll", ExactSpelling = true)]
+        private static extern int WindowsDeleteString(IntPtr hstring);
+
+        [DllImport("api-ms-win-core-winrt-l1-1-0.dll", ExactSpelling = true)]
+        private static extern int RoGetActivationFactory(
+            IntPtr activatableClassId,
+            ref System.Guid iid,
+            [MarshalAs(UnmanagedType.Interface)] out IFullTrustProcessLauncherStatics factory);
+
+        [ComImport]
+        [System.Runtime.InteropServices.Guid("D784837F-1100-3C6B-A455-F6262CC331B6")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
+        private interface IFullTrustProcessLauncherStatics
+        {
+            [return: MarshalAs(UnmanagedType.Interface)]
+            IAsyncAction LaunchFullTrustProcessForCurrentAppAsync();
+
+            [return: MarshalAs(UnmanagedType.Interface)]
+            IAsyncAction LaunchFullTrustProcessForCurrentAppWithParametersAsync(
+                [MarshalAs(UnmanagedType.HString)] string parameterGroupId);
+
+            [return: MarshalAs(UnmanagedType.Interface)]
+            IAsyncAction LaunchFullTrustProcessForAppAsync(
+                [MarshalAs(UnmanagedType.HString)] string fullTrustPackageRelativeAppId);
+
+            [return: MarshalAs(UnmanagedType.Interface)]
+            IAsyncAction LaunchFullTrustProcessForAppWithParametersAsync(
+                [MarshalAs(UnmanagedType.HString)] string fullTrustPackageRelativeAppId,
+                [MarshalAs(UnmanagedType.HString)] string parameterGroupId);
         }
 
         private static async Task<bool> WaitForServiceReadyAsync()
