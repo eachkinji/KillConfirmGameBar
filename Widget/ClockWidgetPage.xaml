@@ -512,12 +512,10 @@
 
                 <Grid
                     Grid.Row="3"
-                    ColumnSpacing="4">
+                    ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="116" />
-                        <ColumnDefinition Width="54" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="136" />
+                        <ColumnDefinition Width="70" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -525,7 +523,7 @@
                     <ComboBox
                         x:Name="VoicePackSelector"
                         Grid.Column="0"
-                        Width="116"
+                        Width="136"
                         Style="{StaticResource OverlayComboBoxStyle}"
                         HorizontalAlignment="Stretch"
                         SelectedIndex="0"
@@ -543,9 +541,9 @@
                     <ComboBox
                         x:Name="TestPresetSelector"
                         Grid.Column="1"
-                        Width="54"
+                        Width="70"
                         Style="{StaticResource OverlayComboBoxStyle}"
-                        MinWidth="54"
+                        MinWidth="70"
                         SelectedIndex="0"
                         ToolTipService.ToolTip="Select test preset">
                         <ComboBoxItem Tag="one">1</ComboBoxItem>
