@@ -11,9 +11,16 @@ use crate::util::logging::service_log;
 use crate::util::state::AppState;
 
 const HEADSHOT_SOUND_GAIN: f32 = 1.8;
-const COMMON_SOUND_GAIN: f32 = 2.5;
-const SEX_EVENT_SOUND_GAIN: f32 = 3.0;
-const SEX_SPECIAL_SOUND_GAIN: f32 = 0.16;
+const COMMON_SOUND_GAIN: f32 = 4.5;
+const SEX_HEADSHOT_SOUND_GAIN: f32 = 7.4;
+const SEX_SPECIAL_SOUND_GAIN: f32 = 0.79;
+const SEX_STREAK_2_SOUND_GAIN: f32 = 5.47;
+const SEX_STREAK_3_SOUND_GAIN: f32 = 6.30;
+const SEX_STREAK_4_SOUND_GAIN: f32 = 6.42;
+const SEX_STREAK_5_SOUND_GAIN: f32 = 6.13;
+const SEX_STREAK_6_SOUND_GAIN: f32 = 6.55;
+const SEX_STREAK_7_SOUND_GAIN: f32 = 6.61;
+const SEX_STREAK_8_SOUND_GAIN: f32 = 7.32;
 const FLYING_TIGER_SOUND_GAIN: f32 = 1.8;
 const WOMEN_SPECIAL_SOUND_GAIN: f32 = 1.6;
 const WOMEN_GR_GRENADE_SOUND_GAIN: f32 = 2.1;
@@ -148,7 +155,7 @@ fn resolve_sound_gain(file_name: &str, event_gain: f32) -> f32 {
     }
 
     if is_sex_pack {
-        return SEX_EVENT_SOUND_GAIN * event_gain;
+        return resolve_sex_sound_gain(&normalized) * event_gain;
     }
 
     if normalized.ends_with("/headshot.wav") {
@@ -181,6 +188,42 @@ fn resolve_sound_gain(file_name: &str, event_gain: f32) -> f32 {
     }
 
     event_gain
+}
+
+fn resolve_sex_sound_gain(normalized_file_name: &str) -> f32 {
+    if normalized_file_name.ends_with("/headshot.wav") {
+        return SEX_HEADSHOT_SOUND_GAIN;
+    }
+
+    if normalized_file_name.ends_with("/2.wav") {
+        return SEX_STREAK_2_SOUND_GAIN;
+    }
+
+    if normalized_file_name.ends_with("/3.wav") {
+        return SEX_STREAK_3_SOUND_GAIN;
+    }
+
+    if normalized_file_name.ends_with("/4.wav") {
+        return SEX_STREAK_4_SOUND_GAIN;
+    }
+
+    if normalized_file_name.ends_with("/5.wav") {
+        return SEX_STREAK_5_SOUND_GAIN;
+    }
+
+    if normalized_file_name.ends_with("/6.wav") {
+        return SEX_STREAK_6_SOUND_GAIN;
+    }
+
+    if normalized_file_name.ends_with("/7.wav") {
+        return SEX_STREAK_7_SOUND_GAIN;
+    }
+
+    if normalized_file_name.ends_with("/8.wav") {
+        return SEX_STREAK_8_SOUND_GAIN;
+    }
+
+    1.0
 }
 
 fn resolve_event_gain(kill_count: u16, play_main_audio: bool) -> f32 {
