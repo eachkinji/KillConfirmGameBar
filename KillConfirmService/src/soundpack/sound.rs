@@ -1,4 +1,4 @@
-use std::{io::BufReader, sync::Arc};
+use std::{io::BufReader, sync::Arc, sync::atomic::Ordering};
 
 use anyhow::{Context, Result};
 use rodio::{Source, mixer};
@@ -13,6 +13,7 @@ use crate::util::state::AppState;
 const HEADSHOT_SOUND_GAIN: f32 = 1.8;
 const COMMON_SOUND_GAIN: f32 = 2.5;
 const SEX_EVENT_SOUND_GAIN: f32 = 3.0;
+const SEX_SPECIAL_SOUND_GAIN: f32 = 0.16;
 const FLYING_TIGER_SOUND_GAIN: f32 = 1.8;
 const WOMEN_SPECIAL_SOUND_GAIN: f32 = 1.6;
 const WOMEN_GR_GRENADE_SOUND_GAIN: f32 = 2.1;
@@ -40,15 +41,16 @@ pub async fn play_audio(
     is_last_kill: bool,
     play_main_audio: bool,
 ) -> Result<()> {
-    let args = &app_state_clone.args;
-    let stream_handle = &app_state_clone.stream_handle;
-    let volume = args.volume;
+    let volume = app_state_clone.volume_percent.load(Ordering::Relaxed) as f32 / 100.0;
 
     service_log(&format!(
         "audio request: kills={kill_count}, headshot={is_headshot}, knife={is_knife_kill}, first={is_first_kill}, last={is_last_kill}, main={play_main_audio}, volume={volume}"
     ));
 
-    let mixer = stream_handle.mixer().to_owned();
+    let mixer = {
+        let stream_handle = app_state_clone.stream_handle.read().await;
+        stream_handle.mixer().to_owned()
+    };
 
     let sound_files = {
         let preset = app_state_clone.preset.read().await;
@@ -132,11 +134,17 @@ fn resolve_sound_gain(file_name: &str, event_gain: f32) -> f32 {
     let is_sex_pack = normalized.contains("/crossfire_v_sex/");
     let is_flying_tiger_pack = normalized.contains("/crossfire_flying_tiger_gr/")
         || normalized.contains("/crossfire_flying_tiger_bl/");
-    let is_women_pack = normalized.contains("/crossfire_women_gr/")
-        || normalized.contains("/crossfire_women_bl/");
+    let is_women_pack =
+        normalized.contains("/crossfire_women_gr/") || normalized.contains("/crossfire_women_bl/");
 
     if normalized.ends_with("/common.wav") {
         return COMMON_SOUND_GAIN * event_gain;
+    }
+
+    if is_sex_pack
+        && (normalized.ends_with("/knife.wav") || normalized.ends_with("/firstandlast.wav"))
+    {
+        return SEX_SPECIAL_SOUND_GAIN * event_gain;
     }
 
     if is_sex_pack {
@@ -159,8 +167,7 @@ fn resolve_sound_gain(file_name: &str, event_gain: f32) -> f32 {
         return FLYING_TIGER_SOUND_GAIN * event_gain;
     }
 
-    if is_women_pack
-        && (normalized.ends_with("/knife.wav") || normalized.ends_with("/grenade.wav"))
+    if is_women_pack && (normalized.ends_with("/knife.wav") || normalized.ends_with("/grenade.wav"))
     {
         let pack_gain = if normalized.contains("/crossfire_women_gr/")
             && normalized.ends_with("/grenade.wav")

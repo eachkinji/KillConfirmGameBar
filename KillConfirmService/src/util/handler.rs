@@ -1,7 +1,7 @@
-use axum::body::Bytes;
 use anyhow::Result;
-use std::sync::atomic::Ordering;
+use axum::body::Bytes;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
@@ -112,7 +112,8 @@ pub async fn update(
     let player_name = ply.name.as_deref().unwrap_or("").to_string();
 
     let round_changed = previous_round != current_round;
-    let round_reset = round_changed || matches!(current_round_phase, Some(TrackedRoundPhase::FreezeTime));
+    let round_reset =
+        round_changed || matches!(current_round_phase, Some(TrackedRoundPhase::FreezeTime));
     let phase_transition_to_over = previous_round_phase == Some(TrackedRoundPhase::Live)
         && current_round_phase == Some(TrackedRoundPhase::Over);
     let can_emit_kill = current_kills > original_kills
@@ -190,14 +191,17 @@ pub async fn update(
         );
     } else if is_initialized && phase_transition_to_over {
         if let Some(pending_last_kill) = pending_last_kill {
-            if now.saturating_duration_since(pending_last_kill.recorded_at) <= FINAL_KILL_GRACE_WINDOW {
+            if now.saturating_duration_since(pending_last_kill.recorded_at)
+                <= FINAL_KILL_GRACE_WINDOW
+            {
                 badge_only_event_to_send = Some(KillEvent {
                     kill_count: pending_last_kill.kill_count,
                     is_headshot: pending_last_kill.is_headshot,
                     is_knife_kill: pending_last_kill.is_knife_kill,
                     is_first_kill: false,
                     is_last_kill: true,
-                    play_main_animation: pending_last_kill.kill_count == 1 && pending_last_kill.is_headshot,
+                    play_main_animation: pending_last_kill.kill_count == 1
+                        && pending_last_kill.is_headshot,
                     player_name: player_name.clone(),
                     steamid: steamid.to_string(),
                 });
@@ -242,7 +246,8 @@ pub async fn update(
     binding.steamid = steamid.to_string();
     binding.current_round = current_round;
     binding.last_round_phase = current_round_phase;
-    binding.has_first_kill_in_round = current_kills > 0 || (!round_reset && had_first_kill_in_round) || can_emit_kill;
+    binding.has_first_kill_in_round =
+        current_kills > 0 || (!round_reset && had_first_kill_in_round) || can_emit_kill;
     binding.pending_last_kill = pending_last_kill_for_next;
     if let Some(is_knife) = current_active_weapon_is_knife {
         binding.last_active_weapon_is_knife = is_knife;

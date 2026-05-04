@@ -41,6 +41,7 @@ namespace TestXboxGameBar
         private const int DefaultPreviewKillCount = 2;
         private const double DefaultBrightnessValue = 70;
         private const double DefaultContrastValue = 80;
+        private const double DefaultAudioVolumeValue = 100;
         private const string FirstKillAssetKey = "firstkill";
         private const string GoldHeadshotAssetKey = "goldheadshot";
         private const string HeadshotAssetKey = "headshot_silver";
@@ -48,6 +49,7 @@ namespace TestXboxGameBar
         private const string LastKillAssetKey = "last_kill";
         private const string BrightnessSettingKey = "AnimationBrightness";
         private const string ContrastSettingKey = "AnimationContrast";
+        private const string AudioVolumeSettingKey = "AudioVolume";
         private const string AnimationPlacementSettingKey = "AnimationPlacement";
         private const string AnimationOffsetSettingKey = "AnimationOffset";
         private const string AnimationScaleSettingKey = "AnimationScale";
@@ -91,6 +93,8 @@ namespace TestXboxGameBar
         private static readonly Uri GsiStatusUri = new Uri("http://127.0.0.1:3000/gsi-status");
         private static readonly Uri ServiceShutdownUri = new Uri("http://127.0.0.1:3000/shutdown");
         private static readonly Uri SoundPackUri = new Uri("http://127.0.0.1:3000/soundpack");
+        private static readonly Uri AudioReloadUri = new Uri("http://127.0.0.1:3000/audio/reload");
+        private static readonly Uri AudioVolumeUri = new Uri("http://127.0.0.1:3000/audio/volume");
         private static readonly Uri Cs2RootUri = new Uri("http://127.0.0.1:3000/cs2-root");
         private static readonly Uri GuideUri = new Uri("killconfirmoverlay://guide");
         private static readonly TimeSpan ServiceStartupTimeout = TimeSpan.FromSeconds(6);
@@ -324,6 +328,11 @@ namespace TestXboxGameBar
             }
 
             await SendTestEventAsync(preset);
+        }
+
+        private async void OnReloadAudioClick(object sender, RoutedEventArgs e)
+        {
+            await ReloadAudioOutputAsync();
         }
 
         private async void OnCheckServerClick(object sender, RoutedEventArgs e)
@@ -786,6 +795,7 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(TestPresetSelector, LocalizationManager.Text("TestPresetTooltip"));
             ToolTipService.SetToolTip(PreviewButton, LocalizationManager.Text("PreviewTooltip"));
             ToolTipService.SetToolTip(SendTestButton, LocalizationManager.Text("SendTestTooltip"));
+            ToolTipService.SetToolTip(ReloadAudioButton, LocalizationManager.Text("ReloadAudioTooltip"));
 
             ToolTipService.SetToolTip(DefaultSizeButton, LocalizationManager.Text("DefaultSizeTooltip"));
             ToolTipService.SetToolTip(CenterButton, LocalizationManager.Text("CenterWindowTooltip"));
@@ -799,6 +809,8 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(BrightnessSelector, LocalizationManager.Text("BrightnessTooltip"));
             ToolTipService.SetToolTip(ContrastIcon, LocalizationManager.Text("ContrastTooltip"));
             ToolTipService.SetToolTip(ContrastSelector, LocalizationManager.Text("ContrastTooltip"));
+            ToolTipService.SetToolTip(VolumeIcon, LocalizationManager.Text("AudioVolumeTooltip"));
+            ToolTipService.SetToolTip(AudioVolumeSelector, LocalizationManager.Text("AudioVolumeTooltip"));
             ToolTipService.SetToolTip(ResetVisualButton, LocalizationManager.Text("ResetTooltip"));
 
             UpdateConnectionState(_serviceConnectionState);
@@ -1531,6 +1543,37 @@ namespace TestXboxGameBar
             }
         }
 
+        private async Task ReloadAudioOutputAsync()
+        {
+            App.Log("Reload audio output requested.");
+            ShowStatusHint(LocalizationManager.Text("ReloadAudioRunning"), Color.FromArgb(255, 251, 191, 36));
+
+            try
+            {
+                await EnsureServiceAvailableAsync();
+
+                using (var client = new HttpClient())
+                using (var content = new HttpStringContent(string.Empty))
+                using (HttpResponseMessage response = await client.PostAsync(AudioReloadUri, content))
+                {
+                    if (response.IsSuccessStatusCode)
+                    {
+                        ShowStatusHint(LocalizationManager.Text("ReloadAudioReady"), Color.FromArgb(255, 167, 243, 208));
+                        App.Log("Reload audio output succeeded.");
+                        return;
+                    }
+
+                    App.Log("Reload audio output failed: status=" + response.StatusCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Log("Reload audio output failed: " + ex);
+            }
+
+            ShowStatusHint(LocalizationManager.Text("ReloadAudioFailed"), Color.FromArgb(255, 251, 191, 36));
+        }
+
         private static string BuildTestEventUri(TestPreset preset)
         {
             var query = new List<string>();
@@ -2005,6 +2048,11 @@ namespace TestXboxGameBar
             ApplyVisualAdjustmentSettings();
         }
 
+        private async void OnAudioVolumeSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            await ApplyAndSaveAudioVolumeAsync();
+        }
+
         private void OnResetVisualAdjustmentsClick(object sender, RoutedEventArgs e)
         {
             _suppressVisualAdjustmentEvents = true;
@@ -2019,14 +2067,17 @@ namespace TestXboxGameBar
             ApplicationDataContainer localSettings = ApplicationData.Current.LocalSettings;
             double brightness = ReadSetting(localSettings, BrightnessSettingKey);
             double contrast = ReadSetting(localSettings, ContrastSettingKey);
+            double audioVolume = ReadSetting(localSettings, AudioVolumeSettingKey);
 
             _suppressVisualAdjustmentEvents = true;
             SelectPercentageOption(BrightnessSelector, brightness);
             SelectPercentageOption(ContrastSelector, contrast);
+            SelectPercentageOption(AudioVolumeSelector, audioVolume);
             _suppressVisualAdjustmentEvents = false;
 
             UpdateVisualAdjustmentLabels(brightness, contrast);
             ApplyVisualAdjustmentSettings();
+            _ = ApplyAndSaveAudioVolumeAsync();
         }
 
         private void ApplyVisualAdjustmentSettings()
@@ -2049,6 +2100,37 @@ namespace TestXboxGameBar
             if (_isPageActive)
             {
                 _ = WarmStartupAnimationCacheAsync();
+            }
+        }
+
+        private async Task ApplyAndSaveAudioVolumeAsync()
+        {
+            if (_suppressVisualAdjustmentEvents)
+            {
+                return;
+            }
+
+            double volume = ReadSelectedPercentage(AudioVolumeSelector, DefaultAudioVolumeValue);
+            ApplicationData.Current.LocalSettings.Values[AudioVolumeSettingKey] = volume;
+
+            try
+            {
+                await EnsureServiceAvailableAsync();
+                string payload = "{\"percent\":" + Math.Max(0, Math.Min(200, (int)Math.Round(volume))) + "}";
+
+                using (var client = new HttpClient())
+                using (var content = new HttpStringContent(payload, Windows.Storage.Streams.UnicodeEncoding.Utf8, "application/json"))
+                using (HttpResponseMessage response = await client.PostAsync(AudioVolumeUri, content))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        App.Log("Set audio volume failed: status=" + response.StatusCode);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Log("Set audio volume failed: " + ex);
             }
         }
 
@@ -2095,9 +2177,17 @@ namespace TestXboxGameBar
                 case int intValue:
                     return intValue;
                 default:
-                    return key == BrightnessSettingKey
-                        ? DefaultBrightnessValue
-                        : DefaultContrastValue;
+                    switch (key)
+                    {
+                        case BrightnessSettingKey:
+                            return DefaultBrightnessValue;
+                        case ContrastSettingKey:
+                            return DefaultContrastValue;
+                        case AudioVolumeSettingKey:
+                            return DefaultAudioVolumeValue;
+                        default:
+                            return 0;
+                    }
             }
         }
 

@@ -14,8 +14,8 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     process::Command,
-    sync::atomic::AtomicU64,
     sync::Arc,
+    sync::atomic::{AtomicU32, AtomicU64},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::sync::{RwLock, broadcast};
@@ -32,7 +32,9 @@ use util::playback::{get_output_stream, list_host_devices};
 
 use anyhow::{Context, Result};
 use soundpack::Preset;
-use util::event_stream::{cs2_root, events_ws, gsi_status, health, shutdown, test_event};
+use util::event_stream::{
+    audio_reload, audio_volume, cs2_root, events_ws, gsi_status, health, shutdown, test_event,
+};
 use util::handler::update;
 
 const DEFAULT_LOG_LEVEL: LevelFilter = if cfg!(debug_assertions) {
@@ -113,6 +115,7 @@ async fn run() -> Result<()> {
     // initialize the specified audio device
     let output_stream = get_output_stream(&args.device).context("failed to get output stream")?;
     service_log("audio output stream ready");
+    let initial_volume_percent = (args.volume.clamp(0.0, 2.0) * 100.0).round() as u32;
 
     let preset_name = if let Some(variant) = &args.variant {
         format!("{}_v_{}", args.preset, variant)
@@ -142,9 +145,10 @@ async fn run() -> Result<()> {
             has_first_kill_in_round: false,
             pending_last_kill: None,
         }),
-        stream_handle: output_stream,
+        stream_handle: RwLock::new(output_stream),
         args,
         preset: RwLock::new(preset),
+        volume_percent: AtomicU32::new(initial_volume_percent),
         event_tx,
         shutdown_tx,
         gsi_posts: AtomicU64::new(0),
@@ -159,8 +163,13 @@ async fn run() -> Result<()> {
         .route("/health", get(health))
         .route("/gsi-status", get(gsi_status))
         .route("/cs2-root", get(cs2_root))
+        .route("/audio/reload", post(audio_reload))
+        .route("/audio/volume", post(audio_volume))
         .route("/shutdown", post(shutdown))
-        .route("/soundpack", get(util::event_stream::soundpack).post(util::event_stream::set_soundpack))
+        .route(
+            "/soundpack",
+            get(util::event_stream::soundpack).post(util::event_stream::set_soundpack),
+        )
         .route("/test/{kill_count}", get(test_event).post(test_event))
         .with_state(app_state)
         .layer((

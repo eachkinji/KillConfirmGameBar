@@ -309,6 +309,8 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <Button
@@ -513,7 +515,8 @@
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="70" />
+                        <ColumnDefinition Width="58" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -521,7 +524,7 @@
                     <ComboBox
                         x:Name="VoicePackSelector"
                         Grid.Column="0"
-                        Width="156"
+                        Width="128"
                         Style="{StaticResource OverlayComboBoxStyle}"
                         HorizontalAlignment="Stretch"
                         SelectedIndex="0"
@@ -539,9 +542,9 @@
                     <ComboBox
                         x:Name="TestPresetSelector"
                         Grid.Column="1"
-                        Width="70"
+                        Width="58"
                         Style="{StaticResource OverlayComboBoxStyle}"
-                        MinWidth="70"
+                        MinWidth="58"
                         SelectedIndex="0"
                         ToolTipService.ToolTip="Select preview or test preset">
                         <ComboBoxItem Tag="one">1</ComboBoxItem>
@@ -582,6 +585,17 @@
                         ToolTipService.ToolTip="Send selected test event">
                         <Grid Style="{StaticResource IconHostStyle}">
                             <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M15 4.24951C15 3.17089 13.7255 2.59866 12.9195 3.31534L8.42794 7.30861C8.29065 7.43067 8.11333 7.4981 7.92961 7.4981H4.25C3.00736 7.4981 2 8.50546 2 9.7481V14.246C2 15.4886 3.00736 16.496 4.25 16.496H7.92956C8.11329 16.496 8.29063 16.5634 8.42793 16.6855L12.9194 20.6792C13.7255 21.396 15 20.8238 15 19.7451V4.24951ZM9.4246 8.42962L13.5 4.8063V19.1883L9.42465 15.5646C9.01275 15.1983 8.48074 14.996 7.92956 14.996H4.25C3.83579 14.996 3.5 14.6602 3.5 14.246V9.7481C3.5 9.33388 3.83579 8.9981 4.25 8.9981H7.92961C8.48075 8.9981 9.01272 8.79581 9.4246 8.42962ZM18.9916 5.89684C19.3244 5.6503 19.7941 5.72028 20.0407 6.05313C21.2717 7.71521 22 9.77341 22 11.9995C22 14.2256 21.2717 16.2838 20.0407 17.9459C19.7941 18.2788 19.3244 18.3488 18.9916 18.1022C18.6587 17.8557 18.5888 17.386 18.8353 17.0531C19.8815 15.6406 20.5 13.8934 20.5 11.9995C20.5 10.1057 19.8815 8.35848 18.8353 6.94592C18.5888 6.61307 18.6587 6.14338 18.9916 5.89684ZM17.143 8.36884C17.5072 8.17165 17.9624 8.30709 18.1596 8.67135C18.6958 9.66196 19 10.7963 19 11.9995C19 13.2027 18.6958 14.3371 18.1596 15.3277C17.9624 15.6919 17.5072 15.8274 17.143 15.6302C16.7787 15.433 16.6432 14.9778 16.8404 14.6136C17.2609 13.8368 17.5 12.9472 17.5 11.9995C17.5 11.0518 17.2609 10.1622 16.8404 9.38544C16.6432 9.02118 16.7787 8.56603 17.143 8.36884Z" />
+                        </Grid>
+                    </Button>
+
+                    <Button
+                        x:Name="ReloadAudioButton"
+                        Grid.Column="4"
+                        Style="{StaticResource ToolbarIconButtonStyle}"
+                        Click="OnReloadAudioClick"
+                        ToolTipService.ToolTip="Reload audio output">
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M7.502 4.998C9.177 3.744 11.272 3 13.5 3C18.747 3 23 7.253 23 12.5C23 17.747 18.747 22 13.5 22C8.253 22 4 17.747 4 12.5C4 12.086 4.336 11.75 4.75 11.75C5.164 11.75 5.5 12.086 5.5 12.5C5.5 16.918 9.082 20.5 13.5 20.5C17.918 20.5 21.5 16.918 21.5 12.5C21.5 8.082 17.918 4.5 13.5 4.5C11.707 4.5 10.019 5.092 8.657 6.099L10.72 8.162C10.934 8.376 10.998 8.698 10.882 8.978C10.766 9.258 10.493 9.44 10.19 9.44H4.75C4.336 9.44 4 9.104 4 8.69V3.25C4 2.947 4.182 2.674 4.462 2.558C4.742 2.442 5.064 2.506 5.278 2.72L7.502 4.998Z" />
                         </Grid>
                     </Button>
                 </Grid>
@@ -823,6 +837,29 @@
                             <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M12 4.5C7.85786 4.5 4.5 7.85786 4.5 12C4.5 16.1421 7.85786 19.5 12 19.5C16.1421 19.5 19.5 16.1421 19.5 12C19.5 11.6236 19.4723 11.2538 19.4188 10.8923C19.3515 10.4382 19.6839 10 20.1429 10C20.5138 10 20.839 10.2562 20.8953 10.6228C20.9642 11.0718 21 11.5317 21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.3051 3 16.4077 3.86656 18 5.29168V4.25C18 3.83579 18.3358 3.5 18.75 3.5C19.1642 3.5 19.5 3.83579 19.5 4.25V7.25C19.5 7.66421 19.1642 8 18.75 8H15.75C15.3358 8 15 7.66421 15 7.25C15 6.83579 15.3358 6.5 15.75 6.5H17.0991C15.7609 5.25883 13.9691 4.5 12 4.5Z" />
                         </Grid>
                     </Button>
+
+                    <PathIcon
+                        x:Name="VolumeIcon"
+                        Grid.Column="5"
+                        Style="{StaticResource FluentTinyPathIconStyle}"
+                        Data="M15 4.24951C15 3.17089 13.7255 2.59866 12.9195 3.31534L8.42794 7.30861C8.29065 7.43067 8.11333 7.4981 7.92961 7.4981H4.25C3.00736 7.4981 2 8.50546 2 9.7481V14.246C2 15.4886 3.00736 16.496 4.25 16.496H7.92956C8.11329 16.496 8.29063 16.5634 8.42793 16.6855L12.9194 20.6792C13.7255 21.396 15 20.8238 15 19.7451V4.24951ZM9.4246 8.42962L13.5 4.8063V19.1883L9.42465 15.5646C9.01275 15.1983 8.48074 14.996 7.92956 14.996H4.25C3.83579 14.996 3.5 14.6602 3.5 14.246V9.7481C3.5 9.33388 3.83579 8.9981 4.25 8.9981H7.92961C8.48075 8.9981 9.01272 8.79581 9.4246 8.42962ZM18.9916 5.89684C19.3244 5.6503 19.7941 5.72028 20.0407 6.05313C21.2717 7.71521 22 9.77341 22 11.9995C22 14.2256 21.2717 16.2838 20.0407 17.9459C19.7941 18.2788 19.3244 18.3488 18.9916 18.1022C18.6587 17.8557 18.5888 17.386 18.8353 17.0531C19.8815 15.6406 20.5 13.8934 20.5 11.9995C20.5 10.1057 19.8815 8.35848 18.8353 6.94592C18.5888 6.61307 18.6587 6.14338 18.9916 5.89684Z"
+                        ToolTipService.ToolTip="Overlay volume" />
+
+                    <ComboBox
+                        x:Name="AudioVolumeSelector"
+                        Grid.Column="6"
+                        Width="70"
+                        Style="{StaticResource CompactComboBoxStyle}"
+                        SelectionChanged="OnAudioVolumeSelectionChanged"
+                        ToolTipService.ToolTip="Overlay volume">
+                        <ComboBoxItem Tag="50">50%</ComboBoxItem>
+                        <ComboBoxItem Tag="70">70%</ComboBoxItem>
+                        <ComboBoxItem Tag="90">90%</ComboBoxItem>
+                        <ComboBoxItem Tag="100">100%</ComboBoxItem>
+                        <ComboBoxItem Tag="120">120%</ComboBoxItem>
+                        <ComboBoxItem Tag="150">150%</ComboBoxItem>
+                        <ComboBoxItem Tag="200">200%</ComboBoxItem>
+                    </ComboBox>
                 </Grid>
             </Grid>
         </Border>

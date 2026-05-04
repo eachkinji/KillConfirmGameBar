@@ -2,18 +2,17 @@ use std::{
     fs,
     path::PathBuf,
     process::Command,
-    sync::atomic::Ordering,
     sync::Arc,
+    sync::atomic::Ordering,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use axum::{
+    Json,
     extract::{
-        Path, Query,
-        State,
+        Path, Query, State,
         ws::{Message, WebSocket, WebSocketUpgrade},
     },
-    Json,
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -22,6 +21,8 @@ use tracing::{debug, error, warn};
 
 use crate::soundpack::Preset;
 use crate::soundpack::sound::play_audio;
+use crate::util::logging::service_log;
+use crate::util::playback::get_output_stream;
 
 use super::state::{AppState, KillEvent};
 
@@ -55,6 +56,11 @@ pub struct GsiStatusResponse {
 #[derive(Debug, Deserialize)]
 pub struct SoundPackRequest {
     pub preset: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VolumeRequest {
+    pub percent: u32,
 }
 
 #[derive(Debug, Serialize)]
@@ -146,6 +152,43 @@ pub async fn shutdown(State(app_state): State<Arc<AppState>>) -> Json<HealthResp
     })
 }
 
+pub async fn audio_reload(
+    State(app_state): State<Arc<AppState>>,
+) -> Result<Json<HealthResponse>, (axum::http::StatusCode, String)> {
+    service_log("audio reload requested");
+    let output_stream = get_output_stream(&app_state.args.device).map_err(|error| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            error.to_string(),
+        )
+    })?;
+
+    {
+        let mut stream_handle = app_state.stream_handle.write().await;
+        *stream_handle = output_stream;
+    }
+
+    service_log("audio output stream reloaded");
+    Ok(Json(HealthResponse {
+        ok: true,
+        service: "kill-confirm-gamebar",
+    }))
+}
+
+pub async fn audio_volume(
+    State(app_state): State<Arc<AppState>>,
+    Json(request): Json<VolumeRequest>,
+) -> Json<HealthResponse> {
+    let percent = request.percent.min(200);
+    app_state.volume_percent.store(percent, Ordering::Relaxed);
+    service_log(&format!("audio volume set to {percent}%"));
+
+    Json(HealthResponse {
+        ok: true,
+        service: "kill-confirm-gamebar",
+    })
+}
+
 pub async fn soundpack(State(app_state): State<Arc<AppState>>) -> Json<SoundPackResponse> {
     let preset = app_state.preset.read().await;
     Json(soundpack_response(&preset.preset_name))
@@ -155,8 +198,12 @@ pub async fn set_soundpack(
     State(app_state): State<Arc<AppState>>,
     Json(request): Json<SoundPackRequest>,
 ) -> Result<Json<SoundPackResponse>, (axum::http::StatusCode, String)> {
-    let preset_name = resolve_soundpack_alias(&request.preset)
-        .ok_or_else(|| (axum::http::StatusCode::BAD_REQUEST, "unsupported sound pack".to_string()))?;
+    let preset_name = resolve_soundpack_alias(&request.preset).ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            "unsupported sound pack".to_string(),
+        )
+    })?;
     let preset = Preset::load(preset_name)
         .map_err(|error| (axum::http::StatusCode::BAD_REQUEST, error.to_string()))?;
 
@@ -227,10 +274,15 @@ fn resolve_soundpack_alias(value: &str) -> Option<&'static str> {
             Some("crossfire_swat_gr")
         }
         "swatbl" | "swat_bl" | "crossfire_swat_bl" => Some("crossfire_swat_bl"),
-        "cfftgr" | "ftgr" | "tiger_gr" | "flying_tiger_gr" | "crossfire_flying_tiger_gr"
-        | "cffhd" | "cf_fhd" | "crossfire_fhd" | "crossfire_v_fhd" => {
-            Some("crossfire_flying_tiger_gr")
-        }
+        "cfftgr"
+        | "ftgr"
+        | "tiger_gr"
+        | "flying_tiger_gr"
+        | "crossfire_flying_tiger_gr"
+        | "cffhd"
+        | "cf_fhd"
+        | "crossfire_fhd"
+        | "crossfire_v_fhd" => Some("crossfire_flying_tiger_gr"),
         "cfsex" | "cf_sex" | "crossfire_sex" | "crossfire_v_sex" => Some("crossfire_v_sex"),
         "cfftbl" | "ftbl" | "tiger_bl" | "flying_tiger_bl" | "crossfire_flying_tiger_bl" => {
             Some("crossfire_flying_tiger_bl")
@@ -395,11 +447,7 @@ fn unix_time_ms() -> u64 {
 }
 
 fn zero_to_none(value: u64) -> Option<u64> {
-    if value == 0 {
-        None
-    } else {
-        Some(value)
-    }
+    if value == 0 { None } else { Some(value) }
 }
 
 async fn send_events(mut socket: WebSocket, mut rx: broadcast::Receiver<KillEvent>) {

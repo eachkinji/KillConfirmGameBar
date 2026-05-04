@@ -12,6 +12,7 @@ using Windows.Foundation;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
+using Windows.UI;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
@@ -434,6 +435,8 @@ namespace TestXboxGameBar.Controls
 
         private void OnSpriteCanvasDraw(CanvasControl sender, CanvasDrawEventArgs args)
         {
+            args.DrawingSession.Clear(Colors.Transparent);
+
             if (_currentMetadata == null || _currentSheet == null || _currentSheet.Image == null)
             {
                 return;
@@ -454,7 +457,12 @@ namespace TestXboxGameBar.Controls
                 _currentMetadata.FrameHeight);
             var targetRect = new Rect(0, 0, _currentMetadata.FrameWidth, _currentMetadata.FrameHeight);
 
-            args.DrawingSession.DrawImage(_currentSheet.Image, targetRect, sourceRect);
+            args.DrawingSession.DrawImage(
+                _currentSheet.Image,
+                targetRect,
+                sourceRect,
+                1.0f,
+                CanvasImageInterpolation.NearestNeighbor);
         }
 
         private void ShowSheetFrame(int frame)

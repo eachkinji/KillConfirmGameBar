@@ -1,2 +1,1 @@
-pub fn service_log(_message: &str) {
-}
+pub fn service_log(_message: &str) {}

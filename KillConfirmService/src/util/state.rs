@@ -1,4 +1,4 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::time::Instant;
 
 use rodio::OutputStream;
@@ -51,9 +51,10 @@ pub struct PendingLastKill {
 
 pub struct AppState {
     pub mutable: RwLock<Mutable>,
-    pub stream_handle: OutputStream,
+    pub stream_handle: RwLock<OutputStream>,
     pub args: Args,
     pub preset: RwLock<Preset>,
+    pub volume_percent: AtomicU32,
     pub event_tx: broadcast::Sender<KillEvent>,
     pub shutdown_tx: broadcast::Sender<()>,
     pub gsi_posts: AtomicU64,
