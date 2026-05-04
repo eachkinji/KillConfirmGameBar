@@ -842,12 +842,25 @@
                         SelectionChanged="OnAudioVolumeSelectionChanged"
                         ToolTipService.ToolTip="Overlay volume">
                         <ComboBoxItem Tag="0">0%</ComboBoxItem>
+                        <ComboBoxItem Tag="10">10%</ComboBoxItem>
+                        <ComboBoxItem Tag="20">20%</ComboBoxItem>
+                        <ComboBoxItem Tag="30">30%</ComboBoxItem>
+                        <ComboBoxItem Tag="40">40%</ComboBoxItem>
                         <ComboBoxItem Tag="50">50%</ComboBoxItem>
+                        <ComboBoxItem Tag="60">60%</ComboBoxItem>
                         <ComboBoxItem Tag="70">70%</ComboBoxItem>
+                        <ComboBoxItem Tag="80">80%</ComboBoxItem>
                         <ComboBoxItem Tag="90">90%</ComboBoxItem>
                         <ComboBoxItem Tag="100">100%</ComboBoxItem>
+                        <ComboBoxItem Tag="110">110%</ComboBoxItem>
                         <ComboBoxItem Tag="120">120%</ComboBoxItem>
+                        <ComboBoxItem Tag="130">130%</ComboBoxItem>
+                        <ComboBoxItem Tag="140">140%</ComboBoxItem>
                         <ComboBoxItem Tag="150">150%</ComboBoxItem>
+                        <ComboBoxItem Tag="160">160%</ComboBoxItem>
+                        <ComboBoxItem Tag="170">170%</ComboBoxItem>
+                        <ComboBoxItem Tag="180">180%</ComboBoxItem>
+                        <ComboBoxItem Tag="190">190%</ComboBoxItem>
                         <ComboBoxItem Tag="200">200%</ComboBoxItem>
                     </ComboBox>
                 </Grid>
