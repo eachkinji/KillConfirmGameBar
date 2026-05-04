@@ -10,10 +10,9 @@ use crate::soundpack::SoundContext;
 use crate::util::logging::service_log;
 use crate::util::state::AppState;
 
-const KNIFE_SOUND_GAIN: f32 = 0.16;
-const FIRST_AND_LAST_SOUND_GAIN: f32 = 0.16;
 const HEADSHOT_SOUND_GAIN: f32 = 1.8;
 const COMMON_SOUND_GAIN: f32 = 2.5;
+const SEX_EVENT_SOUND_GAIN: f32 = 3.0;
 const FLYING_TIGER_SOUND_GAIN: f32 = 1.8;
 const WOMEN_SPECIAL_SOUND_GAIN: f32 = 1.6;
 const WOMEN_GR_GRENADE_SOUND_GAIN: f32 = 2.1;
@@ -130,7 +129,7 @@ pub async fn play_audio(
 
 fn resolve_sound_gain(file_name: &str, event_gain: f32) -> f32 {
     let normalized = file_name.replace('\\', "/").to_ascii_lowercase();
-    let should_lower_special_sounds = normalized.contains("/crossfire_v_sex/");
+    let is_sex_pack = normalized.contains("/crossfire_v_sex/");
     let is_flying_tiger_pack = normalized.contains("/crossfire_flying_tiger_gr/")
         || normalized.contains("/crossfire_flying_tiger_bl/");
     let is_women_pack = normalized.contains("/crossfire_women_gr/")
@@ -140,12 +139,8 @@ fn resolve_sound_gain(file_name: &str, event_gain: f32) -> f32 {
         return COMMON_SOUND_GAIN * event_gain;
     }
 
-    if normalized.ends_with("/knife.wav") && should_lower_special_sounds {
-        return KNIFE_SOUND_GAIN * event_gain;
-    }
-
-    if normalized.ends_with("/firstandlast.wav") && should_lower_special_sounds {
-        return FIRST_AND_LAST_SOUND_GAIN * event_gain;
+    if is_sex_pack {
+        return SEX_EVENT_SOUND_GAIN * event_gain;
     }
 
     if normalized.ends_with("/headshot.wav") {

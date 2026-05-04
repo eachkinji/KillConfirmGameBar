@@ -16,8 +16,9 @@ use crate::util::logging::service_log;
 
 use super::state::{AppState, KillEvent, PendingLastKill, TrackedRoundPhase};
 
-const KNIFE_KILL_GRACE_WINDOW: Duration = Duration::from_millis(50);
-const FINAL_KILL_GRACE_WINDOW: Duration = Duration::from_millis(50);
+// GSI is throttled to 100ms, so knife kills need a short history window.
+const KNIFE_KILL_GRACE_WINDOW: Duration = Duration::from_millis(750);
+const FINAL_KILL_GRACE_WINDOW: Duration = Duration::from_millis(1500);
 
 #[derive(Error, Debug)]
 pub enum ApiError {}
@@ -122,15 +123,21 @@ pub async fn update(
         had_first_kill_in_round
     };
 
-    let mut pending_last_kill_for_next = if round_reset { None } else { pending_last_kill };
+    let should_clear_pending_last_kill = round_reset && !phase_transition_to_over;
+    let mut pending_last_kill_for_next = if should_clear_pending_last_kill {
+        None
+    } else {
+        pending_last_kill
+    };
     let mut kill_event_to_send = None;
     let mut badge_only_event_to_send = None;
 
     if is_initialized && can_emit_kill {
         let is_headshot = current_hs_kills > origin_hs_kills;
-        let is_knife_kill = current_active_weapon_is_knife.unwrap_or(false) || recent_weapon_is_knife;
-        let is_first_kill = !first_kill_already_seen;
+        // Do not use the current frame here: players often switch to knife right after a gun kill.
+        let is_knife_kill = recent_weapon_is_knife;
         let is_last_kill = phase_transition_to_over;
+        let is_first_kill = !is_last_kill && !first_kill_already_seen;
 
         if is_last_kill {
             pending_last_kill_for_next = None;
@@ -139,7 +146,6 @@ pub async fn update(
                 recorded_at: now,
                 kill_count: current_kills,
                 is_headshot,
-                is_first_kill,
                 is_knife_kill,
             });
         }
@@ -189,7 +195,7 @@ pub async fn update(
                     kill_count: pending_last_kill.kill_count,
                     is_headshot: pending_last_kill.is_headshot,
                     is_knife_kill: pending_last_kill.is_knife_kill,
-                    is_first_kill: pending_last_kill.is_first_kill,
+                    is_first_kill: false,
                     is_last_kill: true,
                     play_main_animation: pending_last_kill.kill_count == 1 && pending_last_kill.is_headshot,
                     player_name: player_name.clone(),
@@ -208,7 +214,7 @@ pub async fn update(
                         app_state_clone,
                         kill_count,
                         pending_last_kill.is_headshot,
-                        pending_last_kill.is_first_kill,
+                        false,
                         pending_last_kill.is_knife_kill,
                         true,
                         false,

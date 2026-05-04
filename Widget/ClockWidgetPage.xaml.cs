@@ -555,7 +555,6 @@ namespace TestXboxGameBar
             if (string.IsNullOrWhiteSpace(token))
             {
                 UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
-                await TryAutoDetectCsFolderAsync();
                 return;
             }
 
@@ -569,7 +568,6 @@ namespace TestXboxGameBar
                 App.Log("Failed to restore CS folder access: " + ex);
                 _csInstallFolder = null;
                 UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
-                await TryAutoDetectCsFolderAsync();
             }
         }
 
@@ -1808,6 +1806,8 @@ namespace TestXboxGameBar
             {
                 hints.Add(new StatusHint(LocalizationManager.Text("PinHint"), Color.FromArgb(255, 251, 191, 36)));
             }
+
+            hints.Add(new StatusHint(LocalizationManager.Text("DisableClickThroughHint"), Color.FromArgb(255, 251, 191, 36)));
 
             bool serviceReady = _serviceConnectionState == KillEventConnectionState.Connected;
             bool cfgReady = _cfgDetectionState == CfgDetectionState.Ready;

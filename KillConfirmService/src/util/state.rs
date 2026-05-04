@@ -46,7 +46,6 @@ pub struct PendingLastKill {
     pub recorded_at: Instant,
     pub kill_count: u16,
     pub is_headshot: bool,
-    pub is_first_kill: bool,
     pub is_knife_kill: bool,
 }
 
