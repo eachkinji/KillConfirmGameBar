@@ -1,4 +1,4 @@
-<Page
+﻿<Page
     x:Class="TestXboxGameBar.ClockWidgetPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -9,46 +9,166 @@
     Background="Transparent">
 
     <Page.Resources>
-        <Style x:Key="ToolbarIconButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="28" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="MinWidth" Value="28" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="#24303D" />
-            <Setter Property="Foreground" Value="#FFF8FAFC" />
-            <Setter Property="BorderBrush" Value="#3E5164" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="9" />
+        <Style x:Key="IconHostStyle" TargetType="Grid">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
 
-        <Style x:Key="CompactIconButtonStyle" TargetType="Button">
+        <Style x:Key="CompactIconHostStyle" TargetType="Grid">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="FluentPathIconStyle" TargetType="PathIcon">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="#FFF8FAFC" />
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="0.58" ScaleY="0.58" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="FluentTinyPathIconStyle" TargetType="PathIcon" BasedOn="{StaticResource FluentPathIconStyle}">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="0.52" ScaleY="0.52" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ToolbarIconButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="24" />
             <Setter Property="Height" Value="24" />
             <Setter Property="MinWidth" Value="24" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="#24303D" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="#343941" />
             <Setter Property="Foreground" Value="#FFF8FAFC" />
-            <Setter Property="BorderBrush" Value="#3E5164" />
+            <Setter Property="BorderBrush" Value="#4C5560" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding Content}" />
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="#3D444D" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="#2A2F36" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled" />
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CompactIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="MinWidth" Value="22" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="#343941" />
+            <Setter Property="Foreground" Value="#FFF8FAFC" />
+            <Setter Property="BorderBrush" Value="#4C5560" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Content="{TemplateBinding Content}" />
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="PointerOver">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="#3D444D" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <Storyboard>
+                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="Root" Storyboard.TargetProperty="Background">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="#2A2F36" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled" />
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="OverlayComboBoxStyle" TargetType="ComboBox">
-            <Setter Property="Height" Value="32" />
-            <Setter Property="MinWidth" Value="88" />
-            <Setter Property="Padding" Value="8,0" />
-            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="MinWidth" Value="72" />
+            <Setter Property="Padding" Value="10,0,6,0" />
+            <Setter Property="FontSize" Value="10" />
             <Setter Property="Foreground" Value="#FFF8FAFC" />
-            <Setter Property="Background" Value="#1E2833" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Background" Value="#343941" />
+            <Setter Property="BorderBrush" Value="#77818E" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
         <Style x:Key="CompactComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource OverlayComboBoxStyle}">
-            <Setter Property="Height" Value="28" />
-            <Setter Property="MinWidth" Value="54" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Padding" Value="6,0" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="MinWidth" Value="64" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Padding" Value="9,0,5,0" />
+            <Setter Property="CornerRadius" Value="11" />
         </Style>
     </Page.Resources>
 
@@ -87,7 +207,7 @@
                 Visibility="Collapsed">
                 <TextBlock
                     x:Name="StreakBadgeText"
-                    FontSize="13"
+                    FontSize="10"
                     FontWeight="SemiBold"
                     Foreground="#FF111827"
                     Text="x7" />
@@ -97,16 +217,16 @@
         <Border
             x:Name="ControlPanel"
             Margin="6"
-            Padding="6"
+            Padding="5"
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
-            Width="520"
-            MaxWidth="520"
-            Background="#E711161D"
-            BorderBrush="#3D4D61"
+            Width="312"
+            MaxWidth="312"
+            Background="#F022252A"
+            BorderBrush="#2F3338"
             BorderThickness="1"
             CornerRadius="8">
-            <Grid RowSpacing="5">
+            <Grid RowSpacing="4">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -119,29 +239,29 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Grid ColumnSpacing="6">
+                <Grid ColumnSpacing="5">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="88" />
-                        <ColumnDefinition Width="54" />
+                        <ColumnDefinition Width="78" />
+                        <ColumnDefinition Width="36" />
                     </Grid.ColumnDefinitions>
 
                     <Border
                         x:Name="StatusHintBox"
-                        Height="28"
+                        Height="24"
                         VerticalAlignment="Center"
-                        Padding="8,0"
-                        Background="#1E2833"
-                        BorderBrush="#3E5164"
+                        Padding="7,0"
+                        Background="#303640"
+                        BorderBrush="#4D5660"
                         BorderThickness="1"
-                        CornerRadius="9"
+                        CornerRadius="11"
                         ToolTipService.ToolTip="Click the pin button in Xbox Game Bar's top-right corner.">
                         <TextBlock
                             x:Name="PinHintText"
                             VerticalAlignment="Center"
                             FontSize="10"
                             FontWeight="SemiBold"
-                            Foreground="#FFFFE7A3"
+                            Foreground="#FFFFD54A"
                             Text="Pin the widget in the top-right to keep the icon on screen."
                             TextTrimming="CharacterEllipsis" />
                     </Border>
@@ -149,6 +269,7 @@
                     <ComboBox
                         x:Name="LanguageSelector"
                         Grid.Column="1"
+                        Width="78"
                         Style="{StaticResource OverlayComboBoxStyle}"
                         SelectedIndex="0"
                         SelectionChanged="OnLanguageSelectionChanged"
@@ -159,20 +280,20 @@
 
                     <Border
                         Grid.Column="2"
-                        Width="54"
-                        Padding="8,0"
-                        Height="28"
+                        Width="36"
+                        Padding="4,0"
+                        Height="24"
                         VerticalAlignment="Center"
-                        Background="#1E2833"
-                        BorderBrush="#3E5164"
+                        Background="#303640"
+                        BorderBrush="#4D5660"
                         BorderThickness="1"
-                        CornerRadius="9">
+                        CornerRadius="11">
                         <TextBlock
                             x:Name="VersionText"
                             VerticalAlignment="Center"
-                            FontSize="9"
+                            FontSize="10"
                             FontWeight="SemiBold"
-                            Foreground="#FFBFD0E3"
+                            Foreground="#FFE8EAED"
                             Text="v..." />
                     </Border>
                 </Grid>
@@ -196,7 +317,9 @@
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnStartServiceClick"
                         ToolTipService.ToolTip="Start service">
-                        <PathIcon Data="M7,1 L9,1 L9,8 L7,8 Z M4.2,3.4 A5,5 0 1 0 11.8,3.4 L10.4,4.8 A3,3 0 1 1 5.6,4.8 Z" />
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M8.2042 4.82046C8.57962 4.64545 9.02584 4.80792 9.20085 5.18334C9.37586 5.55876 9.2134 6.00498 8.83797 6.18C6.21382 7.4033 4.5 10.0416 4.5 12.9914C4.5 17.1386 7.85759 20.5002 11.9989 20.5002C16.1403 20.5002 19.4979 17.1386 19.4979 12.9914C19.4979 10.0477 17.7912 7.41389 15.1753 6.18718C14.8002 6.01131 14.6388 5.56472 14.8147 5.1897C14.9905 4.81467 15.4371 4.65322 15.8121 4.82909C18.9502 6.30065 20.9979 9.46066 20.9979 12.9914C20.9979 17.9666 16.9691 22.0002 11.9989 22.0002C7.02876 22.0002 3 17.9666 3 12.9914C3 9.45334 5.05623 6.28796 8.2042 4.82046ZM11.9989 2.49609C12.3786 2.49609 12.6924 2.77825 12.7421 3.14432L12.7489 3.24609V10.746C12.7489 11.1602 12.4132 11.496 11.9989 11.496C11.6192 11.496 11.3055 11.2139 11.2558 10.8478L11.2489 10.746V3.24609C11.2489 2.83188 11.5847 2.49609 11.9989 2.49609Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -205,7 +328,9 @@
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnCheckServerClick"
                         ToolTipService.ToolTip="Check service">
-                        <PathIcon Data="M2,8 L6,12 L14,3 M13,10 L13,14 L9,14" />
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M4.53033 12.9697C4.23744 12.6768 3.76256 12.6768 3.46967 12.9697C3.17678 13.2626 3.17678 13.7374 3.46967 14.0303L7.96967 18.5303C8.26256 18.8232 8.73744 18.8232 9.03033 18.5303L20.0303 7.53033C20.3232 7.23744 20.3232 6.76256 20.0303 6.46967C19.7374 6.17678 19.2626 6.17678 18.9697 6.46967L8.5 16.9393L4.53033 12.9697Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -214,35 +339,37 @@
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnOpenGuideClick"
                         ToolTipService.ToolTip="Open guide">
-                        <PathIcon Data="M3,2 L12,2 L12,14 L3,14 Z M5,5 L10,5 M5,8 L10,8 M5,11 L8,11" />
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M13.25 7C13.25 7.55228 12.8023 8 12.25 8C11.6977 8 11.25 7.55228 11.25 7C11.25 6.44772 11.6977 6 12.25 6C12.8023 6 13.25 6.44772 13.25 7ZM11.5 9.75L11.5 14.75C11.5 15.1642 11.8358 15.5 12.25 15.5C12.6642 15.5 13 15.1642 13 14.75V9.75C13 9.33579 12.6642 9 12.25 9C11.8358 9 11.5 9.33579 11.5 9.75ZM4 4.5C4 3.11929 5.11929 2 6.5 2H18C19.3807 2 20.5 3.11929 20.5 4.5V18.75C20.5 19.1642 20.1642 19.5 19.75 19.5H5.5C5.5 20.0523 5.94772 20.5 6.5 20.5H19.75C20.1642 20.5 20.5 20.8358 20.5 21.25C20.5 21.6642 20.1642 22 19.75 22H6.5C5.11929 22 4 20.8807 4 19.5V4.5ZM19 18V4.5C19 3.94772 18.5523 3.5 18 3.5H6.5C5.94772 3.5 5.5 3.94772 5.5 4.5V18H19Z" />
+                        </Grid>
                     </Button>
 
                     <Border
                         x:Name="ConnectionStatusBadge"
                         Grid.Column="3"
-                        Width="68"
-                        Height="28"
-                        Background="#223040"
-                        BorderBrush="#3E5164"
+                        Width="52"
+                        Height="24"
+                        Background="#303640"
+                        BorderBrush="#4D5660"
                         BorderThickness="1"
-                        CornerRadius="9"
+                        CornerRadius="11"
                         ToolTipService.ToolTip="Service status">
                         <StackPanel
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
-                            Spacing="5">
+                            Spacing="4">
                             <Border
                                 x:Name="ConnectionDot"
-                                Width="8"
-                                Height="8"
+                                Width="7"
+                                Height="7"
                                 Background="#FF6B7280"
-                                CornerRadius="4" />
+                                CornerRadius="3.5" />
                             <TextBlock
                                 x:Name="ServiceBadgeText"
                                 FontSize="10"
                                 FontWeight="SemiBold"
-                                Foreground="#FFBFD0E3"
+                                Foreground="#FFE8EAED"
                                 Text="SVC" />
                         </StackPanel>
                     </Border>
@@ -250,29 +377,29 @@
                     <Border
                         x:Name="CfgStatusBadge"
                         Grid.Column="4"
-                        Width="68"
-                        Height="28"
-                        Background="#223040"
-                        BorderBrush="#3E5164"
+                        Width="52"
+                        Height="24"
+                        Background="#303640"
+                        BorderBrush="#4D5660"
                         BorderThickness="1"
-                        CornerRadius="9"
+                        CornerRadius="11"
                         ToolTipService.ToolTip="CFG status">
                         <StackPanel
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
-                            Spacing="5">
+                            Spacing="4">
                             <Border
                                 x:Name="CfgDot"
-                                Width="8"
-                                Height="8"
+                                Width="7"
+                                Height="7"
                                 Background="#FF6B7280"
-                                CornerRadius="4" />
+                                CornerRadius="3.5" />
                             <TextBlock
                                 x:Name="CfgBadgeText"
                                 FontSize="10"
                                 FontWeight="SemiBold"
-                                Foreground="#FFBFD0E3"
+                                Foreground="#FFE8EAED"
                                 Text="CFG" />
                         </StackPanel>
                     </Border>
@@ -280,29 +407,29 @@
                     <Border
                         x:Name="GsiStatusBadge"
                         Grid.Column="5"
-                        Width="46"
-                        Height="28"
-                        Background="#223040"
-                        BorderBrush="#3E5164"
+                        Width="44"
+                        Height="24"
+                        Background="#303640"
+                        BorderBrush="#4D5660"
                         BorderThickness="1"
-                        CornerRadius="9"
+                        CornerRadius="11"
                         ToolTipService.ToolTip="CS2 data status">
                         <StackPanel
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
-                            Spacing="5">
+                            Spacing="4">
                             <Border
                                 x:Name="GsiDot"
-                                Width="8"
-                                Height="8"
+                                Width="7"
+                                Height="7"
                                 Background="#FF6B7280"
-                                CornerRadius="4" />
+                                CornerRadius="3.5" />
                             <TextBlock
                                 x:Name="GsiBadgeText"
                                 FontSize="10"
                                 FontWeight="SemiBold"
-                                Foreground="#FFBFD0E3"
+                                Foreground="#FFE8EAED"
                                 Text="GSI" />
                         </StackPanel>
                     </Border>
@@ -310,29 +437,29 @@
                     <Border
                         x:Name="AnimationCacheStatusBadge"
                         Grid.Column="6"
-                        Width="46"
-                        Height="28"
-                        Background="#223040"
-                        BorderBrush="#3E5164"
+                        Width="44"
+                        Height="24"
+                        Background="#303640"
+                        BorderBrush="#4D5660"
                         BorderThickness="1"
-                        CornerRadius="9"
+                        CornerRadius="11"
                         ToolTipService.ToolTip="Animation cache status">
                         <StackPanel
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Orientation="Horizontal"
-                            Spacing="5">
+                            Spacing="4">
                             <Border
                                 x:Name="AnimationCacheDot"
-                                Width="8"
-                                Height="8"
+                                Width="7"
+                                Height="7"
                                 Background="#FF6B7280"
-                                CornerRadius="4" />
+                                CornerRadius="3.5" />
                             <TextBlock
                                 x:Name="AnimationCacheBadgeText"
-                                FontSize="9"
+                                FontSize="10"
                                 FontWeight="SemiBold"
-                                Foreground="#FFBFD0E3"
+                                Foreground="#FFE8EAED"
                                 Text="ANI" />
                         </StackPanel>
                     </Border>
@@ -352,7 +479,7 @@
                     <TextBlock
                         x:Name="ServiceDiagnosticText"
                         VerticalAlignment="Center"
-                        FontSize="9"
+                        FontSize="10"
                         FontWeight="SemiBold"
                         Foreground="#FFFFD166"
                         Text="Service failed to start. Restart your PC and try again."
@@ -364,7 +491,9 @@
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnFreePortClick"
                         ToolTipService.ToolTip="Free service port">
-                        <PathIcon Data="M3,8 L7,4 L7,7 L12,7 L12,9 L7,9 L7,12 Z M10,4 L14,4 L14,12 L10,12 L10,10 L12,10 L12,6 L10,6 Z" />
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M6.25 3C4.45507 3 3 4.45507 3 6.25V17.75C3 19.5449 4.45507 21 6.25 21H15.25C15.6642 21 16 20.6642 16 20.25C16 19.8358 15.6642 19.5 15.25 19.5H6.25C5.2835 19.5 4.5 18.7165 4.5 17.75V6.25C4.5 5.2835 5.2835 4.5 6.25 4.5H15.25C15.6642 4.5 16 4.16421 16 3.75C16 3.33579 15.6642 3 15.25 3H6.25ZM17.5303 7.21967C17.2374 6.92678 16.7626 6.92678 16.4697 7.21967C16.1768 7.51256 16.1768 7.98744 16.4697 8.28033L19.4393 11.25H8.75C8.33579 11.25 8 11.5858 8 12C8 12.4142 8.33579 12.75 8.75 12.75H19.4393L16.4697 15.7197C16.1768 16.0126 16.1768 16.4874 16.4697 16.7803C16.7626 17.0732 17.2374 17.0732 17.5303 16.7803L21.7803 12.5303C22.0732 12.2374 22.0732 11.7626 21.7803 11.4697L17.5303 7.21967Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -373,7 +502,9 @@
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnOpenLogsClick"
                         ToolTipService.ToolTip="Open logs folder">
-                        <PathIcon Data="M2,4 L6,4 L7.2,6 L14,6 L14,13 L2,13 Z M4,8 L12,8" />
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M3.50014 6.25C3.50014 5.2835 4.28364 4.5 5.25014 4.5H8.12882C8.32773 4.5 8.5185 4.57902 8.65915 4.71967L10.7198 6.78033C10.8605 6.92098 11.0512 7 11.2501 7H16.7501C17.7166 7 18.5001 7.7835 18.5001 8.75C18.5001 8.83602 18.5146 8.91866 18.5413 8.99561L8.71867 8.99561C7.37893 8.99561 6.14095 9.71035 5.47108 10.8706L3.50014 14.2844V6.25ZM2.00036 17.7883C2.02089 19.5656 3.468 21 5.25014 21H11.0001C11.0292 21 11.058 20.9983 11.0862 20.9951H16.2812C17.6209 20.9951 18.8589 20.2804 19.5288 19.1201L22.5596 13.8706C23.7748 11.7657 22.3337 9.14964 19.9567 9.00214C19.9848 8.92334 20.0001 8.83846 20.0001 8.75C20.0001 6.95507 18.5451 5.5 16.7501 5.5H11.5608L9.71981 3.65901C9.29786 3.23705 8.72556 3 8.12882 3H5.25014C3.45522 3 2.00014 4.45507 2.00014 6.25V17.71C1.9999 17.7362 1.99997 17.7623 2.00036 17.7883ZM8.71867 10.4956L19.745 10.4956C21.0921 10.4956 21.9341 11.9539 21.2605 13.1206L18.2297 18.3701C17.8278 19.0663 17.085 19.4951 16.2812 19.4951H5.25485C3.9077 19.4951 3.06573 18.0368 3.7393 16.8701L6.77011 11.6206C7.17204 10.9245 7.91482 10.4956 8.71867 10.4956Z" />
+                        </Grid>
                     </Button>
                 </Grid>
 
@@ -381,8 +512,8 @@
                     Grid.Row="3"
                     ColumnSpacing="6">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2.4*" />
-                        <ColumnDefinition Width="0.7*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="70" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -390,6 +521,7 @@
                     <ComboBox
                         x:Name="VoicePackSelector"
                         Grid.Column="0"
+                        Width="156"
                         Style="{StaticResource OverlayComboBoxStyle}"
                         HorizontalAlignment="Stretch"
                         SelectedIndex="0"
@@ -407,8 +539,9 @@
                     <ComboBox
                         x:Name="TestPresetSelector"
                         Grid.Column="1"
+                        Width="70"
                         Style="{StaticResource OverlayComboBoxStyle}"
-                        MinWidth="60"
+                        MinWidth="70"
                         SelectedIndex="0"
                         ToolTipService.ToolTip="Select preview or test preset">
                         <ComboBoxItem Tag="one">1</ComboBoxItem>
@@ -436,7 +569,9 @@
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnPreviewClick"
                         ToolTipService.ToolTip="Preview selected result">
-                        <PathIcon Data="M4,2 L13,8 L4,14 Z" />
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M7.60846 4.61489C7.1087 4.34296 6.5 4.70472 6.5 5.27368V18.726C6.5 19.2949 7.1087 19.6567 7.60846 19.3848L19.97 12.6586C20.4921 12.3746 20.4921 11.6251 19.97 11.341L7.60846 4.61489ZM5 5.27368C5 3.56682 6.82609 2.48151 8.32538 3.2973L20.687 10.0235C22.2531 10.8756 22.2531 13.124 20.687 13.9762L8.32538 20.7024C6.82609 21.5181 5 20.4328 5 18.726V5.27368Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -445,7 +580,9 @@
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnTestEventClick"
                         ToolTipService.ToolTip="Send selected test event">
-                        <PathIcon Data="M2,6 L5,6 L9,2 L9,14 L5,10 L2,10 Z M11,5 L13,7 L13,9 L11,11 Z" />
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M15 4.24951C15 3.17089 13.7255 2.59866 12.9195 3.31534L8.42794 7.30861C8.29065 7.43067 8.11333 7.4981 7.92961 7.4981H4.25C3.00736 7.4981 2 8.50546 2 9.7481V14.246C2 15.4886 3.00736 16.496 4.25 16.496H7.92956C8.11329 16.496 8.29063 16.5634 8.42793 16.6855L12.9194 20.6792C13.7255 21.396 15 20.8238 15 19.7451V4.24951ZM9.4246 8.42962L13.5 4.8063V19.1883L9.42465 15.5646C9.01275 15.1983 8.48074 14.996 7.92956 14.996H4.25C3.83579 14.996 3.5 14.6602 3.5 14.246V9.7481C3.5 9.33388 3.83579 8.9981 4.25 8.9981H7.92961C8.48075 8.9981 9.01272 8.79581 9.4246 8.42962ZM18.9916 5.89684C19.3244 5.6503 19.7941 5.72028 20.0407 6.05313C21.2717 7.71521 22 9.77341 22 11.9995C22 14.2256 21.2717 16.2838 20.0407 17.9459C19.7941 18.2788 19.3244 18.3488 18.9916 18.1022C18.6587 17.8557 18.5888 17.386 18.8353 17.0531C19.8815 15.6406 20.5 13.8934 20.5 11.9995C20.5 10.1057 19.8815 8.35848 18.8353 6.94592C18.5888 6.61307 18.6587 6.14338 18.9916 5.89684ZM17.143 8.36884C17.5072 8.17165 17.9624 8.30709 18.1596 8.67135C18.6958 9.66196 19 10.7963 19 11.9995C19 13.2027 18.6958 14.3371 18.1596 15.3277C17.9624 15.6919 17.5072 15.8274 17.143 15.6302C16.7787 15.433 16.6432 14.9778 16.8404 14.6136C17.2609 13.8368 17.5 12.9472 17.5 11.9995C17.5 11.0518 17.2609 10.1622 16.8404 9.38544C16.6432 9.02118 16.7787 8.56603 17.143 8.36884Z" />
+                        </Grid>
                     </Button>
                 </Grid>
 
@@ -461,19 +598,19 @@
                     </Grid.ColumnDefinitions>
 
                     <Border
-                        Width="50"
-                        Height="28"
-                        Background="#1E2833"
-                        BorderBrush="#3E5164"
+                        Width="42"
+                        Height="24"
+                        Background="#303640"
+                        BorderBrush="#4D5660"
                         BorderThickness="1"
-                        CornerRadius="9">
+                        CornerRadius="11">
                         <TextBlock
                             x:Name="CfgLabelText"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             FontSize="10"
                             FontWeight="SemiBold"
-                            Foreground="#FFBFD0E3"
+                            Foreground="#FFE8EAED"
                             Text="CFG" />
                     </Border>
 
@@ -483,7 +620,9 @@
                         Style="{StaticResource ToolbarIconButtonStyle}"
                         Click="OnSelectCsFolderClick"
                         ToolTipService.ToolTip="Select CS2 root folder">
-                        <PathIcon Data="M2,4 L6,4 L7.2,6 L14,6 L14,13 L2,13 Z" />
+                        <Grid Style="{StaticResource IconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentPathIconStyle}" Data="M3.5 6.25V8H8.12868C8.32759 8 8.51836 7.92098 8.65901 7.78033L10.1893 6.25L8.65901 4.71967C8.51836 4.57902 8.32759 4.5 8.12868 4.5H5.25C4.2835 4.5 3.5 5.2835 3.5 6.25ZM2 6.25C2 4.45507 3.45507 3 5.25 3H8.12868C8.72542 3 9.29771 3.23705 9.71967 3.65901L11.5607 5.5H18.75C20.5449 5.5 22 6.95507 22 8.75V17.75C22 19.5449 20.5449 21 18.75 21H5.25C3.45507 21 2 19.5449 2 17.75V6.25ZM3.5 9.5V17.75C3.5 18.7165 4.2835 19.5 5.25 19.5H18.75C19.7165 19.5 20.5 18.7165 20.5 17.75V8.75C20.5 7.7835 19.7165 7 18.75 7H11.5607L9.71967 8.84099C9.29771 9.26295 8.72542 9.5 8.12868 9.5H3.5Z" />
+                        </Grid>
                     </Button>
 
                     <StackPanel
@@ -494,13 +633,13 @@
                             x:Name="CfgStatusText"
                             FontSize="10"
                             FontWeight="SemiBold"
-                            Foreground="#FFBFD0E3"
+                            Foreground="#FFE8EAED"
                             Text="CFG not checked"
                             TextTrimming="CharacterEllipsis" />
                         <TextBlock
                             x:Name="CfgHintText"
-                            FontSize="9"
-                            Foreground="#FF93A4B8"
+                            FontSize="10"
+                            Foreground="#FFAEB4BD"
                             Text="Pick CS2 root folder"
                             TextTrimming="CharacterEllipsis" />
                     </StackPanel>
@@ -508,15 +647,16 @@
                     <Button
                         x:Name="CfgInstallButton"
                         Grid.Column="3"
-                        MinWidth="42"
-                        Height="28"
-                        Padding="8,0"
-                        Background="#24303D"
-                        BorderBrush="#3E5164"
+                        MinWidth="36"
+                        Height="24"
+                        Padding="7,0"
+                        Background="#343941"
+                        BorderBrush="#4D5660"
                         BorderThickness="1"
                         Click="OnInstallCfgClick"
                         Content="Add"
-                        CornerRadius="9"
+                        CornerRadius="10"
+                        FontSize="10"
                         Foreground="#FFF8FAFC"
                         ToolTipService.ToolTip="Add missing CFG"
                         Visibility="Collapsed" />
@@ -524,14 +664,9 @@
 
                 <Grid
                     Grid.Row="5"
+                    HorizontalAlignment="Center"
                     ColumnSpacing="3">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
@@ -547,7 +682,9 @@
                         Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnResizeClick"
                         ToolTipService.ToolTip="Default size">
-                        <PathIcon Data="M3,3 L13,3 L13,13 L3,13 Z M5,5 L11,5 L11,11 L5,11 Z" />
+                        <Grid Style="{StaticResource CompactIconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M3 6.25C3 4.45507 4.45507 3 6.25 3H17.75C19.5449 3 21 4.45507 21 6.25V17.75C21 19.5449 19.5449 21 17.75 21H6.25C4.45507 21 3 19.5449 3 17.75V6.25ZM6.25 4.5C5.2835 4.5 4.5 5.2835 4.5 6.25V17.75C4.5 18.7165 5.2835 19.5 6.25 19.5H17.75C18.7165 19.5 19.5 18.7165 19.5 17.75V6.25C19.5 5.2835 18.7165 4.5 17.75 4.5H6.25Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -556,7 +693,9 @@
                         Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnCenterClick"
                         ToolTipService.ToolTip="Center window">
-                        <PathIcon Data="M8,1 L8,15 M1,8 L15,8 M4,4 L12,4 L12,12 L4,12 Z" />
+                        <Grid Style="{StaticResource CompactIconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2ZM15.2502 14.3322L15.2115 14.4042L15.1479 14.4954L10.3911 20.3479C10.9121 20.4478 11.4499 20.5 12 20.5C14.171 20.5 16.1518 19.6861 17.6541 18.3468L15.57 13.8062C15.4767 13.9901 15.3696 14.1659 15.2502 14.3322ZM4.4903 15.9854C5.42691 17.7466 6.96494 19.1392 8.83046 19.8894L11.991 16L11.8004 15.9951L11.669 15.9865L4.4903 15.9854ZM20.1301 9.51192H15.1322C15.2138 9.61455 15.2905 9.72128 15.3619 9.83176C15.3864 9.85886 15.4088 9.8889 15.4291 9.92091L15.4778 10.0105L15.5168 10.0926C15.6029 10.251 15.6786 10.4158 15.743 10.5862L18.7588 17.1552C19.8511 15.7253 20.5 13.9384 20.5 12C20.5 11.1343 20.3706 10.2989 20.1301 9.51192ZM3.5 12C3.5 12.8649 3.62919 13.6997 3.86932 14.486H8.86618C8.7844 14.3831 8.70759 14.276 8.6361 14.1652L8.50085 13.9432L4.88651 7.34546C4.00985 8.68254 3.5 10.2817 3.5 12ZM10.0198 10.4737L9.9755 10.5454C9.95359 10.5796 9.92937 10.6114 9.90318 10.6407C9.64761 11.0317 9.5 11.4986 9.5 12C9.5 13.2943 10.4835 14.3588 11.744 14.487H12.256C13.5165 14.3588 14.5 13.2943 14.5 12C14.5 10.6985 13.5055 9.62934 12.235 9.5109L11.8623 9.51285L11.8043 9.50755C11.0785 9.56375 10.4396 9.92987 10.0198 10.4737ZM12 3.5C9.60862 3.5 7.4479 4.48753 5.90339 6.07704L8.30536 10.4644C8.43215 10.1597 8.59554 9.87405 8.79004 9.61292L12.6939 3.52791C12.465 3.50942 12.2336 3.5 12 3.5ZM11.5942 8.02033C11.7277 8.00689 11.863 8 12 8C12.1026 8 12.2043 8.00386 12.305 8.01146L19.5086 8.01265C18.4758 6.07167 16.7123 4.57858 14.5851 3.90024L14.2928 3.81283L11.5942 8.02033Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -565,7 +704,9 @@
                         Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnLowerThirdClick"
                         ToolTipService.ToolTip="Place icon at bottom">
-                        <PathIcon Data="M8,2 L13,7 L10,7 L10,10 L6,10 L6,7 L3,7 Z M2,12 L14,12 L14,14 L2,14 Z" />
+                        <Grid Style="{StaticResource CompactIconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M18.2498 20.5009C18.664 20.5008 19 20.8365 19 21.2507C19 21.6649 18.6644 22.0008 18.2502 22.0009L5.25022 22.0047C4.836 22.0048 4.5 21.6691 4.5 21.2549C4.5 20.8407 4.83557 20.5048 5.24978 20.5047L18.2498 20.5009ZM11.6482 2.01271L11.75 2.00586C12.1297 2.00586 12.4435 2.28801 12.4932 2.65409L12.5 2.75586L12.499 16.4409L16.2208 12.7205C16.4871 12.4543 16.9038 12.4301 17.1974 12.648L17.2815 12.7206C17.5477 12.9869 17.5719 13.4036 17.354 13.6972L17.2814 13.7813L12.2837 18.7779C12.0176 19.044 11.6012 19.0683 11.3076 18.8507L11.2235 18.7782L6.22003 13.7816C5.92694 13.4889 5.92661 13.014 6.21931 12.7209C6.48539 12.4545 6.90204 12.43 7.1958 12.6477L7.27997 12.7202L10.999 16.4339L11 2.75586C11 2.37616 11.2822 2.06237 11.6482 2.01271L11.75 2.00586L11.6482 2.01271Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -574,7 +715,9 @@
                         Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnMoveUpClick"
                         ToolTipService.ToolTip="Move icon up">
-                        <PathIcon Data="M8,2 L14,10 L10,10 L10,15 L6,15 L6,10 L2,10 Z" />
+                        <Grid Style="{StaticResource CompactIconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M4.20889 10.7327C3.9232 11.0326 3.93475 11.5074 4.23467 11.7931C4.5346 12.0788 5.00933 12.0672 5.29502 11.7673L11.2495 5.516V20.25C11.2495 20.6642 11.5853 21 11.9995 21C12.4137 21 12.7495 20.6642 12.7495 20.25V5.51565L18.7043 11.7673C18.99 12.0672 19.4648 12.0788 19.7647 11.7931C20.0646 11.5074 20.0762 11.0326 19.7905 10.7327L12.7238 3.31379C12.5627 3.14474 12.3573 3.04477 12.1438 3.01386C12.0971 3.00477 12.0489 3 11.9995 3C11.9498 3 11.9012 3.00483 11.8543 3.01406C11.6412 3.04518 11.4363 3.14509 11.2756 3.31379L4.20889 10.7327Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -583,7 +726,9 @@
                         Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnMoveDownClick"
                         ToolTipService.ToolTip="Move icon down">
-                        <PathIcon Data="M6,1 L10,1 L10,6 L14,6 L8,14 L2,6 L6,6 Z" />
+                        <Grid Style="{StaticResource CompactIconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M19.7905 13.2673C20.0762 12.9674 20.0646 12.4926 19.7647 12.2069C19.4648 11.9212 18.99 11.9328 18.7043 12.2327L12.7498 18.484V3.75C12.7498 3.33579 12.4141 3 11.9998 3C11.5856 3 11.2498 3.33579 11.2498 3.75V18.4844L5.29502 12.2327C5.00933 11.9328 4.5346 11.9212 4.23467 12.2069C3.93475 12.4926 3.9232 12.9674 4.20889 13.2673L11.2756 20.6862C11.4366 20.8553 11.642 20.9552 11.8556 20.9861C11.9023 20.9952 11.9505 21 11.9998 21C12.0495 21 12.0981 20.9952 12.1451 20.9859C12.3582 20.9548 12.5631 20.8549 12.7238 20.6862L19.7905 13.2673Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -592,7 +737,9 @@
                         Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnScaleDownClick"
                         ToolTipService.ToolTip="Shrink icon">
-                        <PathIcon Data="M3,7 L13,7 L13,9 L3,9 Z" />
+                        <Grid Style="{StaticResource CompactIconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M3.75391 12.5H20.2458C20.66 12.5 20.9958 12.1642 20.9958 11.75C20.9958 11.3358 20.66 11 20.2458 11H3.75391C3.33969 11 3.00391 11.3358 3.00391 11.75C3.00391 12.1642 3.33969 12.5 3.75391 12.5Z" />
+                        </Grid>
                     </Button>
 
                     <Button
@@ -601,22 +748,36 @@
                         Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnScaleUpClick"
                         ToolTipService.ToolTip="Enlarge icon">
-                        <PathIcon Data="M7,3 L9,3 L9,7 L13,7 L13,9 L9,9 L9,13 L7,13 L7,9 L3,9 L3,7 L7,7 Z" />
+                        <Grid Style="{StaticResource CompactIconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M12 3.25C12.4142 3.25 12.75 3.58579 12.75 4V11.25H20C20.4142 11.25 20.75 11.5858 20.75 12C20.75 12.4142 20.4142 12.75 20 12.75H12.75V20C12.75 20.4142 12.4142 20.75 12 20.75C11.5858 20.75 11.25 20.4142 11.25 20V12.75H4C3.58579 12.75 3.25 12.4142 3.25 12C3.25 11.5858 3.58579 11.25 4 11.25H11.25V4C11.25 3.58579 11.5858 3.25 12 3.25Z" />
+                        </Grid>
                     </Button>
+
+                </Grid>
+
+                <Grid
+                    Grid.Row="6"
+                    HorizontalAlignment="Center"
+                    ColumnSpacing="4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
                     <PathIcon
                         x:Name="BrightnessIcon"
-                        Grid.Column="7"
-                        Width="16"
-                        Height="16"
-                        Foreground="#FFFFE7A3"
-                        Data="M8,1 L10,5 L14,6 L11,9 L12,14 L8,12 L4,14 L5,9 L2,6 L6,5 Z"
+                        Grid.Column="0"
+                        Style="{StaticResource FluentTinyPathIconStyle}"
+                        Data="M12 2C12.4142 2 12.75 2.33579 12.75 2.75V4.25C12.75 4.66421 12.4142 5 12 5C11.5858 5 11.25 4.66421 11.25 4.25V2.75C11.25 2.33579 11.5858 2 12 2ZM12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17ZM12 15.5C10.067 15.5 8.5 13.933 8.5 12C8.5 10.067 10.067 8.5 12 8.5C13.933 8.5 15.5 10.067 15.5 12C15.5 13.933 13.933 15.5 12 15.5ZM21.25 12.75C21.6642 12.75 22 12.4142 22 12C22 11.5858 21.6642 11.25 21.25 11.25H19.75C19.3358 11.25 19 11.5858 19 12C19 12.4142 19.3358 12.75 19.75 12.75H21.25ZM12 19C12.4142 19 12.75 19.3358 12.75 19.75V21.25C12.75 21.6642 12.4142 22 12 22C11.5858 22 11.25 21.6642 11.25 21.25V19.75C11.25 19.3358 11.5858 19 12 19ZM4.25 12.75C4.66421 12.75 5 12.4142 5 12C5 11.5858 4.66421 11.25 4.25 11.25H2.75C2.33579 11.25 2 11.5858 2 12C2 12.4142 2.33579 12.75 2.75 12.75H4.25ZM4.21967 4.22004C4.51256 3.92715 4.98744 3.92715 5.28033 4.22004L6.78033 5.72004C7.07322 6.01294 7.07322 6.48781 6.78033 6.7807C6.48744 7.0736 6.01256 7.0736 5.71967 6.7807L4.21967 5.2807C3.92678 4.98781 3.92678 4.51294 4.21967 4.22004ZM5.28033 19.7807C4.98744 20.0736 4.51256 20.0736 4.21967 19.7807C3.92678 19.4878 3.92678 19.0129 4.21967 18.72L5.71967 17.22C6.01256 16.9271 6.48744 16.9271 6.78033 17.22C7.07322 17.5129 7.07322 17.9878 6.78033 18.2807L5.28033 19.7807ZM19.7803 4.22004C19.4874 3.92715 19.0126 3.92715 18.7197 4.22004L17.2197 5.72004C16.9268 6.01294 16.9268 6.48781 17.2197 6.7807C17.5126 7.0736 17.9874 7.0736 18.2803 6.7807L19.7803 5.2807C20.0732 4.98781 20.0732 4.51294 19.7803 4.22004ZM18.7197 19.7807C19.0126 20.0736 19.4874 20.0736 19.7803 19.7807C20.0732 19.4878 20.0732 19.0129 19.7803 18.72L18.2803 17.22C17.9874 16.9271 17.5126 16.9271 17.2197 17.22C16.9268 17.5129 16.9268 17.9878 17.2197 18.2807L18.7197 19.7807Z"
                         ToolTipService.ToolTip="Animation brightness" />
 
                     <ComboBox
                         x:Name="BrightnessSelector"
-                        Grid.Column="8"
-                        Width="46"
+                        Grid.Column="1"
+                        Width="70"
                         Style="{StaticResource CompactComboBoxStyle}"
                         SelectionChanged="OnBrightnessSelectionChanged"
                         ToolTipService.ToolTip="Animation brightness">
@@ -631,17 +792,15 @@
 
                     <PathIcon
                         x:Name="ContrastIcon"
-                        Grid.Column="9"
-                        Width="16"
-                        Height="16"
-                        Foreground="#FFE5E7EB"
-                        Data="M2,2 L14,2 L14,14 L2,14 Z M8,2 L14,2 L14,14 L8,14 Z"
+                        Grid.Column="2"
+                        Style="{StaticResource FluentTinyPathIconStyle}"
+                        Data="M3.5 12C3.5 7.30558 7.30558 3.5 12 3.5C16.6944 3.5 20.5 7.30558 20.5 12H3.5ZM12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z"
                         ToolTipService.ToolTip="Animation contrast" />
 
                     <ComboBox
                         x:Name="ContrastSelector"
-                        Grid.Column="10"
-                        Width="46"
+                        Grid.Column="3"
+                        Width="70"
                         Style="{StaticResource CompactComboBoxStyle}"
                         SelectionChanged="OnContrastSelectionChanged"
                         ToolTipService.ToolTip="Animation contrast">
@@ -656,14 +815,17 @@
 
                     <Button
                         x:Name="ResetVisualButton"
-                        Grid.Column="11"
+                        Grid.Column="4"
                         Style="{StaticResource CompactIconButtonStyle}"
                         Click="OnResetVisualAdjustmentsClick"
                         ToolTipService.ToolTip="Reset visual adjustments">
-                        <PathIcon Data="M8,1 L14,4 L8,7 L8,4 A4,4 0 1 0 12,8 L14,8 A6,6 0 1 1 8,2 Z" />
+                        <Grid Style="{StaticResource CompactIconHostStyle}">
+                            <PathIcon Style="{StaticResource FluentTinyPathIconStyle}" Data="M12 4.5C7.85786 4.5 4.5 7.85786 4.5 12C4.5 16.1421 7.85786 19.5 12 19.5C16.1421 19.5 19.5 16.1421 19.5 12C19.5 11.6236 19.4723 11.2538 19.4188 10.8923C19.3515 10.4382 19.6839 10 20.1429 10C20.5138 10 20.839 10.2562 20.8953 10.6228C20.9642 11.0718 21 11.5317 21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.3051 3 16.4077 3.86656 18 5.29168V4.25C18 3.83579 18.3358 3.5 18.75 3.5C19.1642 3.5 19.5 3.83579 19.5 4.25V7.25C19.5 7.66421 19.1642 8 18.75 8H15.75C15.3358 8 15 7.66421 15 7.25C15 6.83579 15.3358 6.5 15.75 6.5H17.0991C15.7609 5.25883 13.9691 4.5 12 4.5Z" />
+                        </Grid>
                     </Button>
                 </Grid>
             </Grid>
         </Border>
     </Grid>
 </Page>
+

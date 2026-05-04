@@ -28,7 +28,7 @@ namespace TestXboxGameBar
 {
     public sealed partial class ClockWidgetPage : Page
     {
-        private static readonly Size DefaultWidgetSize = new Size(520, 180);
+        private static readonly Size DefaultWidgetSize = new Size(324, 190);
         private static readonly Size MinWidgetSize = new Size(160, 120);
         private static readonly Size MaxWidgetSize = new Size(720, 720);
         private const double AnimationOffsetStep = 12.0;
