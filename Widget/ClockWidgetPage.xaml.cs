@@ -38,7 +38,6 @@ namespace TestXboxGameBar
         private const double ScaleDownFactor = 0.9;
         private const int StartupPreloadDelayMs = 250;
         private const int StreakBadgeDisplayDurationMs = 1800;
-        private const int DefaultPreviewKillCount = 2;
         private const double DefaultBrightnessValue = 70;
         private const double DefaultContrastValue = 80;
         private const double DefaultAudioVolumeValue = 100;
@@ -146,6 +145,7 @@ namespace TestXboxGameBar
         private int _animationCacheProgress;
         private bool _animationCacheReady;
         private bool _animationCacheFailed;
+        private bool _shutdownRequested;
         private int _statusHintIndex;
         private DateTimeOffset _lastGsiStatusCheck = DateTimeOffset.MinValue;
         private readonly DispatcherTimer _controlPanelStateTimer;
@@ -221,15 +221,7 @@ namespace TestXboxGameBar
             _statusHintTimer.Stop();
             _widget = null;
             HideStreakBadge();
-            _ = RequestServiceShutdownAsync();
-
-            if (_eventClient != null)
-            {
-                _eventClient.KillReceived -= OnKillReceived;
-                _eventClient.ConnectionStateChanged -= OnConnectionStateChanged;
-                _eventClient.Dispose();
-                _eventClient = null;
-            }
+            _ = ShutdownCompanionAsync();
 
             base.OnNavigatedFrom(e);
         }
@@ -301,22 +293,6 @@ namespace TestXboxGameBar
         private void OnScaleDownClick(object sender, RoutedEventArgs e)
         {
             ScaleAnimation(ScaleDownFactor);
-        }
-
-        private void OnPreviewClick(object sender, RoutedEventArgs e)
-        {
-            TestPreset preset = GetSelectedTestPreset();
-            if (preset == null)
-            {
-                HandleKillEvent(new KillEvent
-                {
-                    KillCount = DefaultPreviewKillCount,
-                    PlayMainAnimation = true
-                });
-                return;
-            }
-
-            HandleKillEvent(preset.ToKillEvent());
         }
 
         private async void OnTestEventClick(object sender, RoutedEventArgs e)
@@ -793,7 +769,6 @@ namespace TestXboxGameBar
             ToolTipService.SetToolTip(CfgInstallButton, LocalizationManager.Text("AddMissingCfgTooltip"));
 
             ToolTipService.SetToolTip(TestPresetSelector, LocalizationManager.Text("TestPresetTooltip"));
-            ToolTipService.SetToolTip(PreviewButton, LocalizationManager.Text("PreviewTooltip"));
             ToolTipService.SetToolTip(SendTestButton, LocalizationManager.Text("SendTestTooltip"));
             ToolTipService.SetToolTip(ReloadAudioButton, LocalizationManager.Text("ReloadAudioTooltip"));
 
@@ -1194,7 +1169,32 @@ namespace TestXboxGameBar
                 : (double?)null;
         }
 
-        private static async Task RequestServiceShutdownAsync()
+        internal async Task ShutdownCompanionAsync()
+        {
+            if (_shutdownRequested)
+            {
+                return;
+            }
+
+            _shutdownRequested = true;
+            StopKillEventClient();
+            await RequestServiceShutdownAsync();
+        }
+
+        private void StopKillEventClient()
+        {
+            if (_eventClient == null)
+            {
+                return;
+            }
+
+            _eventClient.KillReceived -= OnKillReceived;
+            _eventClient.ConnectionStateChanged -= OnConnectionStateChanged;
+            _eventClient.Dispose();
+            _eventClient = null;
+        }
+
+        internal static async Task RequestServiceShutdownAsync()
         {
             try
             {
@@ -1851,6 +1851,7 @@ namespace TestXboxGameBar
             }
 
             hints.Add(new StatusHint(LocalizationManager.Text("DisableClickThroughHint"), Color.FromArgb(255, 251, 191, 36)));
+            hints.Add(new StatusHint(LocalizationManager.Text("ProxyPortHint"), Color.FromArgb(255, 251, 191, 36)));
 
             bool serviceReady = _serviceConnectionState == KillEventConnectionState.Connected;
             bool cfgReady = _cfgDetectionState == CfgDetectionState.Ready;

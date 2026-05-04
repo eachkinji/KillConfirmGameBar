@@ -135,16 +135,47 @@ namespace TestXboxGameBar
         private void OnWidgetWindowClosed(object sender, CoreWindowEventArgs e)
         {
             Window.Current.Closed -= OnWidgetWindowClosed;
+            ShutdownCompanionFromCurrentFrame();
             _clockWidget = null;
             Log("Widget window closed.");
         }
 
-        private void OnSuspending(object sender, SuspendingEventArgs e)
+        private async void OnSuspending(object sender, SuspendingEventArgs e)
         {
             var deferral = e.SuspendingOperation.GetDeferral();
-            _clockWidget = null;
-            Log("App suspending.");
-            deferral.Complete();
+            try
+            {
+                await ShutdownCompanionFromCurrentFrameAsync();
+                _clockWidget = null;
+                Log("App suspending.");
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+        }
+
+        private void ShutdownCompanionFromCurrentFrame()
+        {
+            var ignored = ShutdownCompanionFromCurrentFrameAsync();
+        }
+
+        private async System.Threading.Tasks.Task ShutdownCompanionFromCurrentFrameAsync()
+        {
+            try
+            {
+                if (Window.Current.Content is Frame frame && frame.Content is ClockWidgetPage page)
+                {
+                    await page.ShutdownCompanionAsync();
+                    return;
+                }
+
+                await ClockWidgetPage.RequestServiceShutdownAsync();
+            }
+            catch (Exception ex)
+            {
+                Log("Companion shutdown from app failed: " + ex.Message);
+            }
         }
 
         private void OnUnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)

@@ -220,7 +220,8 @@ pub async fn events_ws(
     State(app_state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     let rx = app_state.event_tx.subscribe();
-    ws.on_upgrade(move |socket| send_events(socket, rx))
+    let shutdown_rx = app_state.shutdown_tx.subscribe();
+    ws.on_upgrade(move |socket| send_events(socket, rx, shutdown_rx))
 }
 
 pub async fn test_event(
@@ -450,17 +451,24 @@ fn zero_to_none(value: u64) -> Option<u64> {
     if value == 0 { None } else { Some(value) }
 }
 
-async fn send_events(mut socket: WebSocket, mut rx: broadcast::Receiver<KillEvent>) {
+async fn send_events(
+    mut socket: WebSocket,
+    mut rx: broadcast::Receiver<KillEvent>,
+    mut shutdown_rx: broadcast::Receiver<()>,
+) {
     debug!("kill event websocket connected");
 
     loop {
-        let event = match rx.recv().await {
-            Ok(event) => event,
-            Err(broadcast::error::RecvError::Lagged(skipped)) => {
-                warn!("kill event websocket skipped {skipped} stale events");
-                continue;
-            }
-            Err(broadcast::error::RecvError::Closed) => break,
+        let event = tokio::select! {
+            event = rx.recv() => match event {
+                Ok(event) => event,
+                Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                    warn!("kill event websocket skipped {skipped} stale events");
+                    continue;
+                }
+                Err(broadcast::error::RecvError::Closed) => break,
+            },
+            _ = shutdown_rx.recv() => break,
         };
 
         let payload = match serde_json::to_string(&event) {

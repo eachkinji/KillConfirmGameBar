@@ -19,7 +19,12 @@ const WOMEN_SPECIAL_SOUND_GAIN: f32 = 1.6;
 const WOMEN_GR_GRENADE_SOUND_GAIN: f32 = 2.1;
 const MAX_STREAK_EVENT_GAIN: f32 = 1.5;
 
-async fn add_file_to_mixer(file_name: &str, mixer: &mixer::Mixer, event_gain: f32) -> Result<()> {
+async fn add_file_to_mixer(
+    file_name: &str,
+    mixer: &mixer::Mixer,
+    event_gain: f32,
+    master_volume: f32,
+) -> Result<()> {
     service_log(&format!("audio opening file: {file_name}"));
     let file = TokioFile::open(file_name)
         .await
@@ -27,7 +32,7 @@ async fn add_file_to_mixer(file_name: &str, mixer: &mixer::Mixer, event_gain: f3
     let sync_file = file.into_std().await;
     let source = rodio::Decoder::new(BufReader::new(sync_file))
         .with_context(|| format!("failed to decode file: {file_name:?}"))?;
-    mixer.add(source.amplify(resolve_sound_gain(file_name, event_gain)));
+    mixer.add(source.amplify(resolve_sound_gain(file_name, event_gain) * master_volume));
     service_log(&format!("audio queued file: {file_name}"));
     Ok(())
 }
@@ -97,15 +102,10 @@ pub async fn play_audio(
 
     for file_path in sound_files {
         let mixer_clone = mixer.clone();
-        tasks.spawn(async move { add_file_to_mixer(&file_path, &mixer_clone, event_gain).await });
+        tasks.spawn(async move {
+            add_file_to_mixer(&file_path, &mixer_clone, event_gain, volume).await
+        });
     }
-
-    tokio::task::spawn_blocking(move || {
-        let sink = rodio::Sink::connect_new(&mixer);
-        sink.set_volume(volume);
-        sink.play();
-        sink.sleep_until_end();
-    });
 
     let results = tasks.join_all().await;
 
