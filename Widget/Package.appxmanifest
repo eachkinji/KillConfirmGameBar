@@ -9,7 +9,7 @@
   <Identity
     Name="KillConfirmGameBar.Overlay"
     Publisher="CN=TestXboxGameBar"
-    Version="1.0.0.116" />
+    Version="1.0.0.134" />
 
   <mp:PhoneIdentity PhoneProductId="8f70c4bd-4270-4a4f-a7d1-91ae48dbe9f4" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
@@ -32,7 +32,7 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="TestXboxGameBar.App">
       <uap:VisualElements
-        DisplayName="Kill Confirm Overlay"
+        DisplayName="Kill Confirm Overlay Setting"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
         Description="Shows kill confirmation animations in Xbox Game Bar"

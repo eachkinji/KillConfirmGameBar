@@ -19,6 +19,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tokio::sync::{RwLock, broadcast};
+use tokio::time::sleep;
 use tower_http::{timeout::TimeoutLayer, trace::TraceLayer};
 use tracing::info;
 use tracing::level_filters::LevelFilter;
@@ -28,7 +29,7 @@ use util::signal::shutdown_signal;
 use util::state::{AppState, Mutable};
 
 use util::Args;
-use util::playback::{get_output_stream, list_host_devices};
+use util::playback::{default_output_device_name, get_output_stream_with_name, list_host_devices};
 
 use anyhow::{Context, Result};
 use soundpack::Preset;
@@ -113,7 +114,8 @@ async fn run() -> Result<()> {
     }
 
     // initialize the specified audio device
-    let output_stream = get_output_stream(&args.device).context("failed to get output stream")?;
+    let (output_stream, output_device_name) =
+        get_output_stream_with_name(&args.device).context("failed to get output stream")?;
     service_log("audio output stream ready");
     let initial_volume_percent = (args.volume.clamp(0.0, 2.0) * 100.0).round() as u32;
 
@@ -146,6 +148,7 @@ async fn run() -> Result<()> {
             pending_last_kill: None,
         }),
         stream_handle: RwLock::new(output_stream),
+        current_output_device_name: RwLock::new(output_device_name.clone()),
         args,
         preset: RwLock::new(preset),
         volume_percent: AtomicU32::new(initial_volume_percent),
@@ -156,6 +159,15 @@ async fn run() -> Result<()> {
         last_gsi_post_unix_ms: AtomicU64::new(0),
         last_gsi_parse_error_unix_ms: AtomicU64::new(0),
     });
+
+    service_log(&format!("active audio device: {}", output_device_name));
+
+    if app_state.args.device.eq_ignore_ascii_case("default") {
+        let watcher_state = app_state.clone();
+        tokio::spawn(async move {
+            monitor_default_output_device(watcher_state).await;
+        });
+    }
 
     let app = Router::new()
         .route("/", post(update))
@@ -187,6 +199,62 @@ async fn run() -> Result<()> {
         .await?;
 
     Ok(())
+}
+
+async fn monitor_default_output_device(app_state: Arc<AppState>) {
+    service_log("default audio device watcher started");
+
+    loop {
+        sleep(Duration::from_secs(2)).await;
+
+        if app_state.shutdown_tx.receiver_count() == 0 {
+            break;
+        }
+
+        let detected_name = match default_output_device_name() {
+            Ok(name) => name,
+            Err(error) => {
+                service_log(&format!("default audio watcher failed to read device: {error}"));
+                continue;
+            }
+        };
+
+        let current_name = {
+            let current = app_state.current_output_device_name.read().await;
+            current.clone()
+        };
+
+        if detected_name.eq_ignore_ascii_case(&current_name) {
+            continue;
+        }
+
+        service_log(&format!(
+            "default audio device changed: {} -> {}",
+            current_name, detected_name
+        ));
+
+        match get_output_stream_with_name("default") {
+            Ok((output_stream, resolved_name)) => {
+                {
+                    let mut stream_handle = app_state.stream_handle.write().await;
+                    *stream_handle = output_stream;
+                }
+                {
+                    let mut current = app_state.current_output_device_name.write().await;
+                    *current = resolved_name.clone();
+                }
+                service_log(&format!(
+                    "default audio device hot reloaded successfully -> {}",
+                    resolved_name
+                ));
+            }
+            Err(error) => {
+                service_log(&format!(
+                    "default audio device hot reload failed: {error}"
+                ));
+            }
+        }
+    }
 }
 
 fn service_log(message: &str) {

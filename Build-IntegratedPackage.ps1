@@ -1,7 +1,9 @@
 param(
     [string]$Configuration = "Debug",
     [string]$Platform = "x64",
-    [string]$MsBuildPath = ""
+    [string]$MsBuildPath = "",
+    [string]$VcInstallPath = "",
+    [switch]$DisableSigning
 )
 
 $ErrorActionPreference = "Stop"
@@ -68,7 +70,9 @@ if (-not $MsBuildPath) {
             "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe",
             "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
             "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
-            "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
+            "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe",
+            "F:\VSC\MSBuild\Current\Bin\MSBuild.exe",
+            "F:\VSC\MSBuild\Current\Bin\amd64\MSBuild.exe"
         )
         $MsBuildPath = $MsBuildCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
     }
@@ -139,13 +143,25 @@ foreach ($targetName in $ObsoleteFrameSequenceTargets) {
 }
 
 $VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-if (-not (Test-Path $VsWhere)) {
-    throw "vswhere was not found. Install Visual Studio or Visual Studio Build Tools with the C++ toolchain."
+if (-not $VcInstallPath -and (Test-Path $VsWhere)) {
+    $VcInstallPath = & $VsWhere -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
 }
 
-$VcInstallPath = & $VsWhere -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
 if (-not $VcInstallPath) {
-    throw "Visual C++ x64 build tools were not found. Install the 'Desktop development with C++' workload or 'Visual Studio Build Tools' with the VCTools workload."
+    $VcInstallCandidates = @(
+        "F:\VSC",
+        "C:\Program Files\Microsoft Visual Studio\2022\BuildTools",
+        "C:\Program Files\Microsoft Visual Studio\2022\Community",
+        "C:\Program Files\Microsoft Visual Studio\2022\Enterprise",
+        "C:\Program Files\Microsoft Visual Studio\18\Community"
+    )
+    $VcInstallPath = $VcInstallCandidates |
+        Where-Object { Test-Path (Join-Path $_ "Common7\Tools\VsDevCmd.bat") } |
+        Select-Object -First 1
+}
+
+if (-not $VcInstallPath) {
+    throw "Visual C++ x64 build tools were not found. Install the 'Desktop development with C++' workload or 'Visual Studio Build Tools' with the VCTools workload, or pass -VcInstallPath."
 }
 
 $VsDevCmd = Join-Path $VcInstallPath "Common7\Tools\VsDevCmd.bat"
@@ -189,7 +205,19 @@ Copy-Item -LiteralPath (Join-Path $ServiceRoot "sounds") -Destination $PackagedS
 Push-Location $PackageRoot
 try {
     $PackageOutputFolder = "Integrated_{0}_Package" -f $Configuration
-    & $MsBuildPath KillConfirmGameBar.Package.wapproj /p:Configuration=$Configuration /p:Platform=$Platform /p:AppxPackageDir=AppPackages\$PackageOutputFolder\ /t:Rebuild /verbosity:minimal
+    $MsBuildArgs = @(
+        "KillConfirmGameBar.Package.wapproj",
+        "/restore",
+        "/p:Configuration=$Configuration",
+        "/p:Platform=$Platform",
+        "/p:AppxPackageDir=AppPackages\$PackageOutputFolder\",
+        "/t:Rebuild",
+        "/verbosity:minimal"
+    )
+    if ($DisableSigning) {
+        $MsBuildArgs += "/p:AppxPackageSigningEnabled=false"
+    }
+    & $MsBuildPath @MsBuildArgs
 }
 finally {
     Pop-Location

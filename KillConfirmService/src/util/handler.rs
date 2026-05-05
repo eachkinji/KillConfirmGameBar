@@ -158,6 +158,7 @@ pub async fn update(
             is_first_kill,
             is_last_kill,
             play_main_animation: true,
+            animation_key: None,
             player_name: player_name.clone(),
             steamid: steamid.to_string(),
         });
@@ -202,6 +203,7 @@ pub async fn update(
                     is_last_kill: true,
                     play_main_animation: pending_last_kill.kill_count == 1
                         && pending_last_kill.is_headshot,
+                    animation_key: None,
                     player_name: player_name.clone(),
                     steamid: steamid.to_string(),
                 });

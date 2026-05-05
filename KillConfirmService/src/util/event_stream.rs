@@ -22,7 +22,7 @@ use tracing::{debug, error, warn};
 use crate::soundpack::Preset;
 use crate::soundpack::sound::play_audio;
 use crate::util::logging::service_log;
-use crate::util::playback::get_output_stream;
+use crate::util::playback::get_output_stream_with_name;
 
 use super::state::{AppState, KillEvent};
 
@@ -34,6 +34,7 @@ pub struct TestEventQuery {
     pub last: Option<bool>,
     pub main: Option<bool>,
     pub audio: Option<bool>,
+    pub animation: Option<String>,
     pub player_name: Option<String>,
     pub steamid: Option<String>,
 }
@@ -156,7 +157,7 @@ pub async fn audio_reload(
     State(app_state): State<Arc<AppState>>,
 ) -> Result<Json<HealthResponse>, (axum::http::StatusCode, String)> {
     service_log("audio reload requested");
-    let output_stream = get_output_stream(&app_state.args.device).map_err(|error| {
+    let (output_stream, device_name) = get_output_stream_with_name(&app_state.args.device).map_err(|error| {
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             error.to_string(),
@@ -167,8 +168,12 @@ pub async fn audio_reload(
         let mut stream_handle = app_state.stream_handle.write().await;
         *stream_handle = output_stream;
     }
+    {
+        let mut current_device = app_state.current_output_device_name.write().await;
+        *current_device = device_name.clone();
+    }
 
-    service_log("audio output stream reloaded");
+    service_log(&format!("audio output stream reloaded -> {device_name}"));
     Ok(Json(HealthResponse {
         ok: true,
         service: "kill-confirm-gamebar",
@@ -236,6 +241,7 @@ pub async fn test_event(
         is_first_kill: query.first.unwrap_or(false),
         is_last_kill: query.last.unwrap_or(false),
         play_main_animation: query.main.unwrap_or(true),
+        animation_key: query.animation.filter(|value| !value.trim().is_empty()),
         player_name: query
             .player_name
             .unwrap_or_else(|| "Test Player".to_string()),

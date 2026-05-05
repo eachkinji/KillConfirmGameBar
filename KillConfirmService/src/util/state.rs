@@ -30,6 +30,8 @@ pub struct KillEvent {
     pub is_first_kill: bool,
     pub is_last_kill: bool,
     pub play_main_animation: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub animation_key: Option<String>,
     pub player_name: String,
     pub steamid: String,
 }
@@ -52,6 +54,7 @@ pub struct PendingLastKill {
 pub struct AppState {
     pub mutable: RwLock<Mutable>,
     pub stream_handle: RwLock<OutputStream>,
+    pub current_output_device_name: RwLock<String>,
     pub args: Args,
     pub preset: RwLock<Preset>,
     pub volume_percent: AtomicU32,

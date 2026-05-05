@@ -27,7 +27,7 @@
     <TargetPlatformMinVersion>10.0.18362.0</TargetPlatformMinVersion>
     <DefaultLanguage>zh-CN</DefaultLanguage>
     <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
-    <PackageCertificateThumbprint>BD3E1193CF240C6BFB60A97E0CF83104BBCC3CE6</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>C00A9CB110C12787AD185DF8F6D631908F07526E</PackageCertificateThumbprint>
     <NoWarn>$(NoWarn);NU1702</NoWarn>
     <EntryPointProjectUniqueName>..\Widget\TestXboxGameBar.csproj</EntryPointProjectUniqueName>
   </PropertyGroup>

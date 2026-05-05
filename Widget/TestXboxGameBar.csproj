@@ -21,7 +21,7 @@
     <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
     <PackageCertificateKeyFile>TestXboxGameBar_TemporaryKey.pfx</PackageCertificateKeyFile>
     <PackageCertificatePassword>test</PackageCertificatePassword>
-    <PackageCertificateThumbprint>BD3E1193CF240C6BFB60A97E0CF83104BBCC3CE6</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>C00A9CB110C12787AD185DF8F6D631908F07526E</PackageCertificateThumbprint>
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
 
@@ -142,6 +142,9 @@
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\KillConfirmSheets\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\KillConfirmCode\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\FluentIcons\*">

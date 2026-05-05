@@ -32,12 +32,16 @@ namespace TestXboxGameBar.Controls
         private const string KnifeKillAssetKey = "knife_kill";
         private const string LastKillAssetKey = "last_kill";
         private const int FrameSequenceFps = 60;
-        private const double TargetPlaybackDurationSeconds = 77.0 / FrameSequenceFps;
+        private const double TargetPlaybackFrames = 77.0;
         private const int LoadingIndicatorDelayMs = 250;
         private const int MaxCachedFrameWidth = 400;
         private const int MaxCachedFrameHeight = 300;
+        private const double CodeKillFrameWidth = 607;
+        private const double CodeKillFrameHeight = 436;
         private static double _brightnessBoost;
         private static double _contrastBoost;
+        private static double _targetPlaybackFps = FrameSequenceFps;
+        private static string _iconPack = "default";
 
         private static readonly Dictionary<string, SpriteMetadata> MetadataCache = new Dictionary<string, SpriteMetadata>();
         private static readonly Dictionary<string, IReadOnlyList<SpriteSheetSegment>> SheetCache = new Dictionary<string, IReadOnlyList<SpriteSheetSegment>>();
@@ -47,6 +51,8 @@ namespace TestXboxGameBar.Controls
         private SpriteMetadata _currentMetadata;
         private IReadOnlyList<SpriteSheetSegment> _currentSheets;
         private SpriteSheetSegment _currentSheet;
+        private Code2KillAsset _currentCodeAsset;
+        private static readonly Dictionary<string, Code2KillAsset> CodeKillCache = new Dictionary<string, Code2KillAsset>();
         private static Task _startupPreloadTask;
         private static Task _preloadTask;
         private int _currentFrame;
@@ -75,6 +81,22 @@ namespace TestXboxGameBar.Controls
             }
 
             PlayInternal(progress => LoadNamedAssetAsync(assetKey, progress));
+        }
+
+        public void PlayCode2Kill()
+        {
+            PlayCodeKill("multi2");
+        }
+
+        public void PlayCodeKill(string assetName)
+        {
+            if (string.IsNullOrWhiteSpace(assetName))
+            {
+                Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            PlayInternal(progress => LoadCodeKillAssetAsync(assetName, progress));
         }
 
         public Task PreloadCommonAnimationsAsync()
@@ -135,6 +157,30 @@ namespace TestXboxGameBar.Controls
             _preloadTask = null;
         }
 
+        public static void ConfigurePlaybackFps(double playbackFps)
+        {
+            _targetPlaybackFps = Math.Max(1.0, Math.Min(240.0, playbackFps));
+        }
+
+        public static void ConfigureIconPack(string iconPack)
+        {
+            string normalized = string.IsNullOrWhiteSpace(iconPack)
+                ? "default"
+                : iconPack.Trim().ToLowerInvariant();
+            if (normalized != "angelic_beast")
+            {
+                normalized = "default";
+            }
+
+            if (string.Equals(_iconPack, normalized, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _iconPack = normalized;
+            CodeKillCache.Clear();
+        }
+
         private async void PlayInternal(Func<IProgress<int>, Task<AnimationAsset>> assetLoader)
         {
             int token = ++_playToken;
@@ -161,6 +207,7 @@ namespace TestXboxGameBar.Controls
                 _timer.Stop();
                 _currentMetadata = asset.Metadata;
                 _currentSheets = asset.Sheets;
+                _currentCodeAsset = asset.CodeAsset;
                 _currentSheet = null;
                 _currentFrame = 0;
 
@@ -402,14 +449,124 @@ namespace TestXboxGameBar.Controls
             }
         }
 
+        private async Task<AnimationAsset> LoadCodeKillAssetAsync(string assetName, IProgress<int> progress = null)
+        {
+            string normalizedAssetName = assetName.Trim().ToLowerInvariant();
+            if (!TryGetCodeKillFiles(normalizedAssetName, out string mainFileName, out string fxFileName))
+            {
+                throw new FileNotFoundException("Unsupported code kill asset: " + assetName);
+            }
+
+            string cacheKey = _iconPack + ":" + normalizedAssetName;
+            if (!CodeKillCache.TryGetValue(cacheKey, out Code2KillAsset asset))
+            {
+                CanvasBitmap main = await LoadCodeKillBitmapAsync(mainFileName, true);
+                progress?.Report(50);
+                CanvasBitmap fx = string.IsNullOrWhiteSpace(fxFileName)
+                    ? null
+                    : await LoadCodeKillBitmapAsync(fxFileName, true);
+                asset = new Code2KillAsset(main, fx);
+                CodeKillCache[cacheKey] = asset;
+            }
+
+            progress?.Report(100);
+            return new AnimationAsset(
+                new SpriteMetadata
+                {
+                    FrameWidth = (int)CodeKillFrameWidth,
+                    FrameHeight = (int)CodeKillFrameHeight,
+                    Frames = 77,
+                    Fps = FrameSequenceFps
+                },
+                asset);
+        }
+
+        private static bool TryGetCodeKillFiles(string assetName, out string mainFileName, out string fxFileName)
+        {
+            switch (assetName)
+            {
+                case "multi1":
+                    mainFileName = "badge_multi1.png";
+                    fxFileName = null;
+                    return true;
+                case "multi2":
+                case "code2kill":
+                    mainFileName = "badge_multi2.png";
+                    fxFileName = "multi2_fx.png";
+                    return true;
+                case "multi3":
+                    mainFileName = "badge_multi3.png";
+                    fxFileName = "multi3_fx.png";
+                    return true;
+                case "multi4":
+                    mainFileName = "badge_multi4.png";
+                    fxFileName = "multi4_fx.png";
+                    return true;
+                case "multi5":
+                    mainFileName = "badge_multi5.png";
+                    fxFileName = "multi5_fx.png";
+                    return true;
+                case "multi6":
+                    mainFileName = "badge_multi6.png";
+                    fxFileName = "multi6_fx.png";
+                    return true;
+                case "headshot":
+                    mainFileName = "badge_headshot.png";
+                    fxFileName = null;
+                    return true;
+                case "headshot_gold":
+                    mainFileName = "badge_headshot_gold.png";
+                    fxFileName = null;
+                    return true;
+                case "headshot_vvip":
+                    mainFileName = "badge_headshot_vvip.png";
+                    fxFileName = null;
+                    return true;
+                case "headshot_gold_vvip":
+                    mainFileName = "badge_headshot_gold_vvip.png";
+                    fxFileName = null;
+                    return true;
+                default:
+                    mainFileName = null;
+                    fxFileName = null;
+                    return false;
+            }
+        }
+
+        private static async Task<CanvasBitmap> LoadCodeKillBitmapAsync(string fileName, bool allowDefaultFallback)
+        {
+            if (!string.Equals(_iconPack, "default", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    return await LoadBitmapFromApplicationUriAsync($"ms-appx:///Assets/KillConfirmCode/AngelicBeast/{fileName}");
+                }
+                catch
+                {
+                    if (!allowDefaultFallback)
+                    {
+                        throw;
+                    }
+                }
+            }
+
+            return await LoadBitmapFromApplicationUriAsync($"ms-appx:///Assets/KillConfirmCode/{fileName}");
+        }
+
         private static void ClearSheetCache()
         {
             SheetCache.Clear();
+            CodeKillCache.Clear();
         }
 
         private static async Task<CanvasBitmap> LoadSheetBitmapAsync(string fileName)
         {
-            var uri = new Uri($"ms-appx:///Assets/KillConfirmSheets/{fileName}");
+            return await LoadBitmapFromApplicationUriAsync($"ms-appx:///Assets/KillConfirmSheets/{fileName}");
+        }
+
+        private static async Task<CanvasBitmap> LoadBitmapFromApplicationUriAsync(string uriText)
+        {
+            var uri = new Uri(uriText);
             StorageFile file = await StorageFile.GetFileFromApplicationUriAsync(uri);
 
             using (IRandomAccessStream stream = await file.OpenReadAsync())
@@ -437,6 +594,12 @@ namespace TestXboxGameBar.Controls
         {
             args.DrawingSession.Clear(Colors.Transparent);
 
+            if (_currentCodeAsset != null)
+            {
+                DrawCode2KillFrame(args.DrawingSession, _currentFrame);
+                return;
+            }
+
             if (_currentMetadata == null || _currentSheet == null || _currentSheet.Image == null)
             {
                 return;
@@ -463,6 +626,159 @@ namespace TestXboxGameBar.Controls
                 sourceRect,
                 1.0f,
                 CanvasImageInterpolation.NearestNeighbor);
+        }
+
+        private void DrawCode2KillFrame(CanvasDrawingSession drawingSession, int frame)
+        {
+            if (_currentCodeAsset == null)
+            {
+                return;
+            }
+
+            double timeSec = frame / (double)FrameSequenceFps;
+            double mainProgress = Clamp01(timeSec / 1.2833);
+            double fxProgress = Clamp01(timeSec / 0.48);
+
+            TransformSample main = SampleTrack(new[]
+            {
+                new TransformKey(0.0000, -180, 96, 4.80, 1.00),
+                new TransformKey(0.0222, -180, -180, 2.75, 1.00),
+                new TransformKey(0.0444, -164, -196, 2.28, 1.00),
+                new TransformKey(0.0667, -159, -202, 2.02, 1.00),
+                new TransformKey(0.0889, -167, -194, 1.80, 1.00),
+                new TransformKey(0.1111, -162, -198, 1.62, 1.00),
+                new TransformKey(0.1333, -170, -191, 1.46, 1.00),
+                new TransformKey(0.1556, -166, -194, 1.32, 1.00),
+                new TransformKey(0.1778, -172, -188, 1.22, 1.00),
+                new TransformKey(0.2000, -169, -190, 1.15, 1.00),
+                new TransformKey(0.2222, -174, -186, 1.10, 1.00),
+                new TransformKey(0.2444, -172, -187, 1.06, 1.00),
+                new TransformKey(0.2667, -176, -184, 1.03, 1.00),
+                new TransformKey(0.2889, -175, -184, 1.01, 1.00),
+                new TransformKey(0.3111, -179, -181, 1.00, 1.00),
+                new TransformKey(0.3500, -180, -180, 1.00, 1.00),
+                new TransformKey(0.7143, -180, -180, 1.00, 1.00),
+                new TransformKey(0.8571, -180, -180, 1.00, 0.55),
+                new TransformKey(1.0000, -180, -180, 1.00, 0.00)
+            }, mainProgress);
+
+            TransformSample fxTrack = SampleTrack(new[]
+            {
+                new TransformKey(0.0000, 0, 0, 4.55, 0.94),
+                new TransformKey(0.0222, 0, 0, 2.95, 1.00),
+                new TransformKey(0.0444, 0, 0, 2.62, 1.00),
+                new TransformKey(0.0667, 0, 0, 2.42, 1.00),
+                new TransformKey(0.0889, 0, 0, 2.08, 0.98),
+                new TransformKey(0.1111, 0, 0, 1.94, 0.96),
+                new TransformKey(0.1333, 0, 0, 1.66, 0.92),
+                new TransformKey(0.1556, 0, 0, 1.56, 0.88),
+                new TransformKey(0.1778, 0, 0, 1.32, 0.82),
+                new TransformKey(0.2000, 0, 0, 1.28, 0.78),
+                new TransformKey(0.2222, 0, 0, 1.12, 0.74),
+                new TransformKey(0.2444, 0, 0, 1.12, 0.70),
+                new TransformKey(0.2667, 0, 0, 1.04, 0.68),
+                new TransformKey(0.2889, 0, 0, 1.00, 0.66),
+                new TransformKey(0.3500, 0, 0, 1.00, 0.66),
+                new TransformKey(0.7000, 0, 0, 1.00, 0.62),
+                new TransformKey(0.8600, 0, 0, 1.00, 0.24),
+                new TransformKey(1.0000, 0, 0, 1.12, 0.00)
+            }, fxProgress);
+
+            ApplyCode2KillFramePatch(frame, ref main);
+
+            double fillWindow = Math.Max(0, 1 - Math.Abs(fxProgress - 0.24) / 0.14);
+            TransformSample fx = new TransformSample(
+                main.X + 70,
+                main.Y + 70,
+                fxTrack.Scale * (1 + 0.28 * fillWindow),
+                fxTrack.Opacity);
+
+            if (frame >= 5 && frame <= 15)
+            {
+                main.Scale = 1.0;
+            }
+
+            if (frame >= 16)
+            {
+                main.X = -180;
+                main.Y = -180;
+                main.Scale = 1.0;
+                fx.X = -110;
+                fx.Y = -110;
+                fx.Scale = 1.0;
+            }
+
+            double fxStackScale = 1.0;
+            int fxVisibleLayers = 1;
+            double extraAlpha1 = 0;
+            double extraAlpha2 = 0;
+            double fxOpacityMultiplier = 1.0;
+
+            if (frame >= 0 && frame <= 15)
+            {
+                double growT = Clamp01(frame / 15.0);
+                fxVisibleLayers = frame <= 6 ? 1 : 3;
+                fxStackScale = Lerp(1.0, 1.30, growT);
+                if (frame >= 7)
+                {
+                    extraAlpha1 = 0.92;
+                    extraAlpha2 = 0.78;
+                }
+            }
+            else if (frame >= 16)
+            {
+                if (frame <= 35)
+                {
+                    double settleT = Clamp01((frame - 16) / 19.0);
+                    fxVisibleLayers = 3;
+                    fxStackScale = Lerp(1.30, 1.0, settleT);
+                    extraAlpha1 = 0.92;
+                    extraAlpha2 = 0.78;
+                    fx.Opacity = 0.66;
+                    fxOpacityMultiplier = 1.0 - settleT;
+                }
+                else
+                {
+                    fxVisibleLayers = 0;
+                    fxStackScale = 1.0;
+                    fx.Opacity = 0;
+                    fxOpacityMultiplier = 0;
+                }
+            }
+
+            DrawCenteredScaledImage(
+                drawingSession,
+                _currentCodeAsset.Main,
+                main.X,
+                main.Y,
+                360,
+                360,
+                main.Scale,
+                main.Opacity);
+
+            CanvasBlend previousBlend = drawingSession.Blend;
+            drawingSession.Blend = CanvasBlend.Add;
+
+            double[] layerOpacityMultipliers = { 1, extraAlpha1, extraAlpha2 };
+            for (int i = 0; i < 3; i++)
+            {
+                if (i >= fxVisibleLayers)
+                {
+                    continue;
+                }
+
+                DrawCenteredScaledImage(
+                    drawingSession,
+                    _currentCodeAsset.Fx,
+                    fx.X,
+                    fx.Y,
+                    220,
+                    220,
+                    fx.Scale * fxStackScale,
+                    fx.Opacity * layerOpacityMultipliers[i] * fxOpacityMultiplier);
+            }
+
+            drawingSession.Blend = previousBlend;
         }
 
         private void ShowSheetFrame(int frame)
@@ -524,7 +840,7 @@ namespace TestXboxGameBar.Controls
 
         private void OnTick(object sender, object e)
         {
-            if (_currentMetadata == null || _currentSheets == null)
+            if (_currentMetadata == null || (_currentSheets == null && _currentCodeAsset == null))
             {
                 _timer.Stop();
                 _playbackClock.Stop();
@@ -532,7 +848,8 @@ namespace TestXboxGameBar.Controls
                 return;
             }
 
-            double playbackProgress = _playbackClock.Elapsed.TotalSeconds / TargetPlaybackDurationSeconds;
+            double targetDurationSeconds = TargetPlaybackFrames / Math.Max(1.0, _targetPlaybackFps);
+            double playbackProgress = _playbackClock.Elapsed.TotalSeconds / targetDurationSeconds;
             int elapsedFrame = (int)Math.Floor(playbackProgress * _currentMetadata.Frames);
             if (elapsedFrame <= _currentFrame)
             {
@@ -558,7 +875,136 @@ namespace TestXboxGameBar.Controls
                 return;
             }
 
+            if (_currentCodeAsset != null)
+            {
+                SpriteCanvas.Invalidate();
+                return;
+            }
+
             ShowSheetFrame(frame);
+        }
+
+        private static void DrawCenteredScaledImage(
+            CanvasDrawingSession drawingSession,
+            CanvasBitmap image,
+            double x,
+            double y,
+            double width,
+            double height,
+            double scale,
+            double opacity)
+        {
+            if (image == null || opacity <= 0 || scale <= 0)
+            {
+                return;
+            }
+
+            double scaledWidth = width * scale;
+            double scaledHeight = height * scale;
+            double anchoredX = (CodeKillFrameWidth / 2.0) + x;
+            double anchoredY = (CodeKillFrameHeight / 2.0) + y;
+            var target = new Rect(
+                anchoredX + (width - scaledWidth) / 2.0,
+                anchoredY + (height - scaledHeight) / 2.0,
+                scaledWidth,
+                scaledHeight);
+
+            var source = new Rect(0, 0, image.SizeInPixels.Width, image.SizeInPixels.Height);
+            drawingSession.DrawImage(image, target, source, (float)Math.Max(0.0, Math.Min(1.0, opacity)));
+        }
+
+        private static void ApplyCode2KillFramePatch(int frame, ref TransformSample main)
+        {
+            switch (frame)
+            {
+                case 0:
+                    main.Y += 160;
+                    main.Scale *= 0.94;
+                    break;
+                case 1:
+                    main.Scale *= 0.78;
+                    break;
+                case 2:
+                    main.X += 48;
+                    main.Y += 83;
+                    main.Scale *= 0.69;
+                    break;
+                case 3:
+                    main.Y += 28;
+                    main.Scale *= 0.55;
+                    break;
+                case 4:
+                    main.Scale *= 0.55;
+                    break;
+                case 5:
+                    main.X += 6;
+                    main.Y += 38;
+                    main.Scale *= 0.63;
+                    break;
+                case 6:
+                    main.X += 25;
+                    main.Y += 28;
+                    main.Scale *= 0.69;
+                    break;
+                case 7:
+                    main.X += 23;
+                    main.Y += 33;
+                    main.Scale *= 0.77;
+                    break;
+                case 8:
+                    main.X -= 20;
+                    main.Y += 20;
+                    main.Scale *= 0.87;
+                    break;
+                case 9:
+                    main.X += 6;
+                    main.Y += 29;
+                    main.Scale *= 0.93;
+                    break;
+                case 10:
+                    main.X -= 6;
+                    main.Y += 25;
+                    break;
+                case 11:
+                    main.X -= 18;
+                    main.Y += 20;
+                    break;
+            }
+        }
+
+        private static TransformSample SampleTrack(IReadOnlyList<TransformKey> keys, double progress)
+        {
+            if (progress <= keys[0].Progress)
+            {
+                return keys[0].ToSample();
+            }
+
+            for (int i = 1; i < keys.Count; i++)
+            {
+                TransformKey previous = keys[i - 1];
+                TransformKey next = keys[i];
+                if (progress <= next.Progress)
+                {
+                    double local = (progress - previous.Progress) / Math.Max(0.0001, next.Progress - previous.Progress);
+                    return new TransformSample(
+                        Lerp(previous.X, next.X, local),
+                        Lerp(previous.Y, next.Y, local),
+                        Lerp(previous.Scale, next.Scale, local),
+                        Lerp(previous.Opacity, next.Opacity, local));
+                }
+            }
+
+            return keys[keys.Count - 1].ToSample();
+        }
+
+        private static double Clamp01(double value)
+        {
+            return Math.Max(0.0, Math.Min(1.0, value));
+        }
+
+        private static double Lerp(double a, double b, double t)
+        {
+            return a + (b - a) * t;
         }
 
         private static void ApplyColorBoost(byte[] pixelData)
@@ -645,8 +1091,67 @@ namespace TestXboxGameBar.Controls
                 Sheets = sheets;
             }
 
+            public AnimationAsset(SpriteMetadata metadata, Code2KillAsset codeAsset)
+            {
+                Metadata = metadata;
+                Sheets = null;
+                CodeAsset = codeAsset;
+            }
+
             public SpriteMetadata Metadata { get; }
             public IReadOnlyList<SpriteSheetSegment> Sheets { get; }
+            public Code2KillAsset CodeAsset { get; }
+        }
+
+        private sealed class Code2KillAsset
+        {
+            public Code2KillAsset(CanvasBitmap main, CanvasBitmap fx)
+            {
+                Main = main;
+                Fx = fx;
+            }
+
+            public CanvasBitmap Main { get; }
+            public CanvasBitmap Fx { get; }
+        }
+
+        private readonly struct TransformKey
+        {
+            public TransformKey(double progress, double x, double y, double scale, double opacity)
+            {
+                Progress = progress;
+                X = x;
+                Y = y;
+                Scale = scale;
+                Opacity = opacity;
+            }
+
+            public double Progress { get; }
+            public double X { get; }
+            public double Y { get; }
+            public double Scale { get; }
+            public double Opacity { get; }
+
+            public TransformSample ToSample()
+            {
+                return new TransformSample(X, Y, Scale, Opacity);
+            }
+        }
+
+        private struct TransformSample
+        {
+            public TransformSample(double x, double y, double scale, double opacity)
+            {
+                X = x;
+                Y = y;
+                Scale = scale;
+                Opacity = opacity;
+            }
+
+            public double X;
+            public double Y;
+            public double Scale;
+            public double Opacity;
         }
 
     }

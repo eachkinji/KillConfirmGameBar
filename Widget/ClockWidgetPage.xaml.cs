@@ -41,6 +41,7 @@ namespace TestXboxGameBar
         private const double DefaultBrightnessValue = 70;
         private const double DefaultContrastValue = 80;
         private const double DefaultAudioVolumeValue = 100;
+        private const double DefaultPlaybackFpsValue = 60;
         private const string FirstKillAssetKey = "firstkill";
         private const string GoldHeadshotAssetKey = "goldheadshot";
         private const string HeadshotAssetKey = "headshot_silver";
@@ -49,6 +50,8 @@ namespace TestXboxGameBar
         private const string BrightnessSettingKey = "AnimationBrightness";
         private const string ContrastSettingKey = "AnimationContrast";
         private const string AudioVolumeSettingKey = "AudioVolume";
+        private const string PlaybackFpsSettingKey = "AnimationPlaybackFps";
+        private const string IconPackSettingKey = "KillIconPack";
         private const string AnimationPlacementSettingKey = "AnimationPlacement";
         private const string AnimationOffsetSettingKey = "AnimationOffset";
         private const string AnimationScaleSettingKey = "AnimationScale";
@@ -95,7 +98,6 @@ namespace TestXboxGameBar
         private static readonly Uri AudioReloadUri = new Uri("http://127.0.0.1:3000/audio/reload");
         private static readonly Uri AudioVolumeUri = new Uri("http://127.0.0.1:3000/audio/volume");
         private static readonly Uri Cs2RootUri = new Uri("http://127.0.0.1:3000/cs2-root");
-        private static readonly Uri GuideUri = new Uri("killconfirmoverlay://guide");
         private static readonly TimeSpan ServiceStartupTimeout = TimeSpan.FromSeconds(6);
         private static readonly TimeSpan ServiceStartupPollInterval = TimeSpan.FromMilliseconds(250);
         private const string FreeServicePortParameterGroupId = "FreeServicePort";
@@ -111,6 +113,8 @@ namespace TestXboxGameBar
                 ["one_last"] = new TestPreset(1, isLastKill: true),
                 ["gold_first"] = new TestPreset(1, isHeadshot: true, isFirstKill: true),
                 ["gold_last"] = new TestPreset(1, isHeadshot: true, isLastKill: true),
+                ["headshot_vvip"] = new TestPreset(1, isHeadshot: true, animationKey: "headshot_vvip"),
+                ["headshot_gold_vvip"] = new TestPreset(1, isHeadshot: true, animationKey: "headshot_gold_vvip"),
                 ["two"] = new TestPreset(2),
                 ["three"] = new TestPreset(3),
                 ["four"] = new TestPreset(4),
@@ -133,6 +137,7 @@ namespace TestXboxGameBar
         private XboxGameBarWidgetWindowState _windowState = XboxGameBarWidgetWindowState.Restored;
         private bool _suppressVisualAdjustmentEvents;
         private bool _suppressVoicePackEvents;
+        private bool _suppressIconPackEvents;
         private bool _suppressLanguageEvents = true;
         private bool _isPageActive;
         private StorageFolder _csInstallFolder;
@@ -193,6 +198,7 @@ namespace TestXboxGameBar
             }
 
             LoadVisualAdjustmentSettings();
+            LoadIconPackSetting();
             LoadAnimationPlacementSettings();
             LoadVoicePackSetting();
             _controlPanelStateTimer.Start();
@@ -311,31 +317,13 @@ namespace TestXboxGameBar
             await ReloadAudioOutputAsync();
         }
 
-        private async void OnCheckServerClick(object sender, RoutedEventArgs e)
-        {
-            await CheckServerHealthAsync();
-        }
-
-        private async void OnStartServiceClick(object sender, RoutedEventArgs e)
-        {
-            await EnsureServiceAvailableAsync();
-        }
-
         private async void OnOpenGuideClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                if (await TryOpenGuideAppEntryAsync())
+                if (await App.TryShowGuideWindowAsync())
                 {
                     return;
-                }
-
-                bool launched = await Launcher.LaunchUriAsync(GuideUri);
-                App.Log("Open guide protocol launch result=" + launched);
-
-                if (!launched)
-                {
-                    ShowGuideOpenFailedHint();
                 }
             }
             catch (Exception ex)
@@ -343,31 +331,6 @@ namespace TestXboxGameBar
                 App.Log("Failed to open guide: " + ex);
                 ShowGuideOpenFailedHint();
             }
-        }
-
-        private static async Task<bool> TryOpenGuideAppEntryAsync()
-        {
-            try
-            {
-                IReadOnlyList<AppListEntry> entries = await Package.Current.GetAppListEntriesAsync();
-                App.Log("Open guide app entries=" + entries.Count);
-
-                foreach (AppListEntry entry in entries)
-                {
-                    bool launched = await entry.LaunchAsync();
-                    App.Log("Open guide app entry launch result=" + launched);
-                    if (launched)
-                    {
-                        return true;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                App.Log("Open guide app entry launch failed: " + ex);
-            }
-
-            return false;
         }
 
         private void ShowGuideOpenFailedHint()
@@ -742,8 +705,6 @@ namespace TestXboxGameBar
             RefreshStatusHint(true);
             ToolTipService.SetToolTip(LanguageSelector, "Language / 语言");
 
-            ToolTipService.SetToolTip(StartServiceButton, LocalizationManager.Text("StartServiceTooltip"));
-            ToolTipService.SetToolTip(CheckServiceButton, LocalizationManager.Text("CheckServiceTooltip"));
             ToolTipService.SetToolTip(OpenGuideButton, LocalizationManager.Text("OpenGuideTooltip"));
             ToolTipService.SetToolTip(OpenLogsButton, LocalizationManager.Text("OpenLogsTooltip"));
             ToolTipService.SetToolTip(FreePortButton, LocalizationManager.Text("FreePortTooltip"));
@@ -764,6 +725,7 @@ namespace TestXboxGameBar
             CrossfireWomenBlVoiceItem.Content = LocalizationManager.Text("CrossfireWomenBl");
 
             ToolTipService.SetToolTip(VoicePackSelector, LocalizationManager.Text("VoiceTooltip"));
+            ToolTipService.SetToolTip(IconPackSelector, "Kill icon pack / 击杀图标包");
             ToolTipService.SetToolTip(SelectCsFolderButton, LocalizationManager.Text("SelectCsFolderTooltip"));
             CfgInstallButton.Content = LocalizationManager.Text("Add");
             ToolTipService.SetToolTip(CfgInstallButton, LocalizationManager.Text("AddMissingCfgTooltip"));
@@ -1228,6 +1190,66 @@ namespace TestXboxGameBar
             await SyncSelectedVoicePackAsync();
         }
 
+        private void OnIconPackSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressIconPackEvents)
+            {
+                return;
+            }
+
+            string iconPack = GetSelectedIconPack();
+            ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] = iconPack;
+            Controls.KillConfirmAnimation.ConfigureIconPack(iconPack);
+        }
+
+        private void LoadIconPackSetting()
+        {
+            string iconPack = ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] as string;
+            if (string.IsNullOrWhiteSpace(iconPack))
+            {
+                iconPack = "default";
+            }
+
+            SelectIconPack(iconPack);
+            Controls.KillConfirmAnimation.ConfigureIconPack(GetSelectedIconPack());
+        }
+
+        private string GetSelectedIconPack()
+        {
+            if (IconPackSelector.SelectedItem is ComboBoxItem item
+                && item.Tag is string tag
+                && !string.IsNullOrWhiteSpace(tag))
+            {
+                return tag;
+            }
+
+            return "default";
+        }
+
+        private void SelectIconPack(string iconPack)
+        {
+            _suppressIconPackEvents = true;
+            try
+            {
+                foreach (object option in IconPackSelector.Items)
+                {
+                    if (option is ComboBoxItem item
+                        && item.Tag is string tag
+                        && string.Equals(tag, iconPack, StringComparison.OrdinalIgnoreCase))
+                    {
+                        IconPackSelector.SelectedItem = item;
+                        return;
+                    }
+                }
+
+                IconPackSelector.SelectedIndex = 0;
+            }
+            finally
+            {
+                _suppressIconPackEvents = false;
+            }
+        }
+
         private void LoadVoicePackSetting()
         {
             string preset = ApplicationData.Current.LocalSettings.Values[VoicePackSettingKey] as string;
@@ -1463,6 +1485,19 @@ namespace TestXboxGameBar
                 return;
             }
 
+            if (string.Equals(killEvent.AnimationKey, "code2kill", StringComparison.OrdinalIgnoreCase))
+            {
+                PrimaryKillAnimation.PlayCodeKill("multi2");
+                return;
+            }
+
+            if (string.Equals(killEvent.AnimationKey, "headshot_vvip", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(killEvent.AnimationKey, "headshot_gold_vvip", StringComparison.OrdinalIgnoreCase))
+            {
+                PrimaryKillAnimation.PlayCodeKill(killEvent.AnimationKey);
+                return;
+            }
+
             if (killEvent.KillCount == 1)
             {
                 if (killEvent.IsKnifeKill)
@@ -1475,13 +1510,26 @@ namespace TestXboxGameBar
                 {
                     if (killEvent.IsFirstKill || killEvent.IsLastKill)
                     {
-                        PrimaryKillAnimation.PlayNamed(GoldHeadshotAssetKey);
+                        PrimaryKillAnimation.PlayCodeKill("headshot_gold");
                         return;
                     }
 
-                    PrimaryKillAnimation.PlayNamed(HeadshotAssetKey);
+                    PrimaryKillAnimation.PlayCodeKill("headshot");
                     return;
                 }
+
+                if (string.Equals(GetSelectedIconPack(), "angelic_beast", StringComparison.OrdinalIgnoreCase))
+                {
+                    PrimaryKillAnimation.PlayCodeKill("multi1");
+                    return;
+                }
+            }
+
+            if (killEvent.KillCount >= 2)
+            {
+                int codeKillCount = Math.Max(2, Math.Min(6, killEvent.KillCount));
+                PrimaryKillAnimation.PlayCodeKill("multi" + codeKillCount);
+                return;
             }
 
             PrimaryKillAnimation.Play(killEvent.KillCount);
@@ -1600,6 +1648,11 @@ namespace TestXboxGameBar
             if (!preset.PlayMainAnimation)
             {
                 query.Add("main=false");
+            }
+
+            if (!string.IsNullOrWhiteSpace(preset.AnimationKey))
+            {
+                query.Add("animation=" + Uri.EscapeDataString(preset.AnimationKey));
             }
 
             query.Add("audio=true");
@@ -1851,6 +1904,7 @@ namespace TestXboxGameBar
             }
 
             hints.Add(new StatusHint(LocalizationManager.Text("DisableClickThroughHint"), Color.FromArgb(255, 251, 191, 36)));
+            hints.Add(new StatusHint(LocalizationManager.Text("DisableFullscreenOptimizationsHint"), Color.FromArgb(255, 251, 191, 36)));
             hints.Add(new StatusHint(LocalizationManager.Text("ProxyPortHint"), Color.FromArgb(255, 251, 191, 36)));
 
             bool serviceReady = _serviceConnectionState == KillEventConnectionState.Connected;
@@ -2054,6 +2108,11 @@ namespace TestXboxGameBar
             await ApplyAndSaveAudioVolumeAsync();
         }
 
+        private void OnPlaybackFpsSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ApplyPlaybackFpsSettings();
+        }
+
         private void OnResetVisualAdjustmentsClick(object sender, RoutedEventArgs e)
         {
             _suppressVisualAdjustmentEvents = true;
@@ -2069,15 +2128,18 @@ namespace TestXboxGameBar
             double brightness = ReadSetting(localSettings, BrightnessSettingKey);
             double contrast = ReadSetting(localSettings, ContrastSettingKey);
             double audioVolume = ReadSetting(localSettings, AudioVolumeSettingKey);
+            double playbackFps = ReadSetting(localSettings, PlaybackFpsSettingKey);
 
             _suppressVisualAdjustmentEvents = true;
             SelectPercentageOption(BrightnessSelector, brightness);
             SelectPercentageOption(ContrastSelector, contrast);
             SelectPercentageOption(AudioVolumeSelector, audioVolume);
+            SelectPercentageOption(PlaybackFpsSelector, playbackFps);
             _suppressVisualAdjustmentEvents = false;
 
             UpdateVisualAdjustmentLabels(brightness, contrast);
             ApplyVisualAdjustmentSettings();
+            ApplyPlaybackFpsSettings();
             _ = ApplyAndSaveAudioVolumeAsync();
         }
 
@@ -2102,6 +2164,18 @@ namespace TestXboxGameBar
             {
                 _ = WarmStartupAnimationCacheAsync();
             }
+        }
+
+        private void ApplyPlaybackFpsSettings()
+        {
+            if (_suppressVisualAdjustmentEvents)
+            {
+                return;
+            }
+
+            double playbackFps = ReadSelectedPercentage(PlaybackFpsSelector, DefaultPlaybackFpsValue);
+            ApplicationData.Current.LocalSettings.Values[PlaybackFpsSettingKey] = playbackFps;
+            Controls.KillConfirmAnimation.ConfigurePlaybackFps(playbackFps);
         }
 
         private async Task ApplyAndSaveAudioVolumeAsync()
@@ -2186,6 +2260,8 @@ namespace TestXboxGameBar
                             return DefaultContrastValue;
                         case AudioVolumeSettingKey:
                             return DefaultAudioVolumeValue;
+                        case PlaybackFpsSettingKey:
+                            return DefaultPlaybackFpsValue;
                         default:
                             return 0;
                     }
@@ -2331,7 +2407,8 @@ namespace TestXboxGameBar
                 bool isKnifeKill = false,
                 bool isFirstKill = false,
                 bool isLastKill = false,
-                bool playMainAnimation = true)
+                bool playMainAnimation = true,
+                string animationKey = null)
             {
                 KillCount = killCount;
                 IsHeadshot = isHeadshot;
@@ -2339,6 +2416,7 @@ namespace TestXboxGameBar
                 IsFirstKill = isFirstKill;
                 IsLastKill = isLastKill;
                 PlayMainAnimation = playMainAnimation;
+                AnimationKey = animationKey;
             }
 
             public int KillCount { get; }
@@ -2347,6 +2425,7 @@ namespace TestXboxGameBar
             public bool IsFirstKill { get; }
             public bool IsLastKill { get; }
             public bool PlayMainAnimation { get; }
+            public string AnimationKey { get; }
 
             public KillEvent ToKillEvent()
             {
@@ -2357,7 +2436,8 @@ namespace TestXboxGameBar
                     IsKnifeKill = IsKnifeKill,
                     IsFirstKill = IsFirstKill,
                     IsLastKill = IsLastKill,
-                    PlayMainAnimation = PlayMainAnimation
+                    PlayMainAnimation = PlayMainAnimation,
+                    AnimationKey = AnimationKey
                 };
             }
         }

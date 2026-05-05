@@ -19,11 +19,22 @@ pub fn list_host_devices() -> Result<()> {
     Ok(())
 }
 
-// Get an `OutputStream` and `OutputStreamHandle` for a specific device
-pub fn get_output_stream(device_name: &str) -> Result<OutputStream> {
+pub fn default_output_device_name() -> Result<String> {
+    let host = cpal::default_host();
+    let device = host
+        .default_output_device()
+        .context("default output device is unavailable")?;
+    Ok(device.name()?)
+}
+
+pub fn get_output_stream_with_name(device_name: &str) -> Result<(OutputStream, String)> {
     if device_name == "default" {
-        return Ok(OutputStreamBuilder::open_default_stream()?);
+        let resolved_name = default_output_device_name()?;
+        let stream = OutputStreamBuilder::open_default_stream()?;
+        info!("Using default device: {}", resolved_name);
+        return Ok((stream, resolved_name));
     }
+
     let host = cpal::default_host();
     let devices = host.output_devices()?;
     for device in devices {
@@ -31,13 +42,16 @@ pub fn get_output_stream(device_name: &str) -> Result<OutputStream> {
         let dev_name: String = dev.name()?;
         if dev_name == device_name {
             info!("Using device: {}", dev_name);
-            return Ok(OutputStreamBuilder::from_device(dev)?.open_stream_or_fallback()?);
+            let stream = OutputStreamBuilder::from_device(dev)?.open_stream_or_fallback()?;
+            return Ok((stream, dev_name));
         }
     }
-    // If the specified device is not found, fall back to the default
+
     warn!(
         "Specified device {} not found, using default output device.",
         device_name
     );
-    Ok(OutputStreamBuilder::open_default_stream()?)
+    let resolved_name = default_output_device_name()?;
+    let stream = OutputStreamBuilder::open_default_stream()?;
+    Ok((stream, resolved_name))
 }

@@ -3,12 +3,14 @@ using System.IO;
 using Microsoft.Gaming.XboxGameBar;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
+using Windows.ApplicationModel.Core;
 using Windows.Storage;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using Windows.UI.ViewManagement;
 
 namespace TestXboxGameBar
 {
@@ -17,6 +19,7 @@ namespace TestXboxGameBar
         private const string WidgetId = "KillConfirmWidget";
         private const string RuntimeLogFileName = "gamebar-widget.log";
         private const long MaxRuntimeLogBytes = 512 * 1024;
+        private static int? _guideViewId;
 
         private XboxGameBarWidget _clockWidget;
 
@@ -125,6 +128,67 @@ namespace TestXboxGameBar
             var rootFrame = new Frame();
             rootFrame.NavigationFailed += OnNavigationFailed;
             return rootFrame;
+        }
+
+        internal static async System.Threading.Tasks.Task<bool> TryShowGuideWindowAsync()
+        {
+            try
+            {
+                if (_guideViewId.HasValue)
+                {
+                    bool shownExisting = await ApplicationViewSwitcher.TryShowAsStandaloneAsync(_guideViewId.Value);
+                    Log("TryShowGuideWindowAsync existing view shown=" + shownExisting);
+                    if (shownExisting)
+                    {
+                        return true;
+                    }
+
+                    _guideViewId = null;
+                }
+
+                int newViewId = 0;
+                CoreApplicationView newView = CoreApplication.CreateNewView();
+                await newView.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    Frame guideFrame = new Frame();
+                    guideFrame.NavigationFailed += Current_NavigationFailed;
+                    guideFrame.Navigate(typeof(MainPage));
+                    Window.Current.Content = guideFrame;
+                    Window.Current.Activate();
+
+                    ApplicationView view = ApplicationView.GetForCurrentView();
+                    view.Title = "Kill Confirm Overlay Advanced Settings";
+                    view.Consolidated += OnGuideViewConsolidated;
+                    newViewId = view.Id;
+                });
+
+                bool shown = await ApplicationViewSwitcher.TryShowAsStandaloneAsync(newViewId);
+                Log("TryShowGuideWindowAsync new view shown=" + shown + ", viewId=" + newViewId);
+                if (shown)
+                {
+                    _guideViewId = newViewId;
+                }
+
+                return shown;
+            }
+            catch (Exception ex)
+            {
+                Log("TryShowGuideWindowAsync failed: " + ex);
+                return false;
+            }
+        }
+
+        private static void Current_NavigationFailed(object sender, NavigationFailedEventArgs e)
+        {
+            throw new InvalidOperationException("Failed to load page " + e.SourcePageType.FullName, e.Exception);
+        }
+
+        private static void OnGuideViewConsolidated(ApplicationView sender, ApplicationViewConsolidatedEventArgs args)
+        {
+            if (_guideViewId == sender.Id)
+            {
+                _guideViewId = null;
+            }
         }
 
         private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)

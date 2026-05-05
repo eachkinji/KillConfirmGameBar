@@ -23,6 +23,7 @@ namespace TestXboxGameBar.Services
         public bool IsFirstKill { get; set; }
         public bool IsLastKill { get; set; }
         public bool PlayMainAnimation { get; set; }
+        public string AnimationKey { get; set; }
         public string PlayerName { get; set; }
         public string SteamId { get; set; }
     }
@@ -124,6 +125,7 @@ namespace TestXboxGameBar.Services
                     IsFirstKill = json.GetNamedBoolean("is_first_kill", false),
                     IsLastKill = json.GetNamedBoolean("is_last_kill", false),
                     PlayMainAnimation = json.GetNamedBoolean("play_main_animation", true),
+                    AnimationKey = json.GetNamedString("animation_key", string.Empty),
                     PlayerName = json.GetNamedString("player_name", string.Empty),
                     SteamId = json.GetNamedString("steamid", string.Empty)
                 };
