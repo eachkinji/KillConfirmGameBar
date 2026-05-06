@@ -519,7 +519,7 @@ namespace TestXboxGameBar.Controls
                     ? null
                     : await LoadCodeKillBitmapAsync(fxFileName, fxFolder, null, false);
                 CanvasBitmap eliteOverlay = await LoadEliteOverlayBitmapAsync(normalizedAssetName);
-                CanvasBitmap weaponBadgeOverlay = await LoadWeaponBadgeOverlayBitmapAsync(normalizedWeaponBadgeKey);
+                CanvasBitmap weaponBadgeOverlay = await LoadWeaponBadgeOverlayBitmapAsync(normalizedAssetName, normalizedWeaponBadgeKey);
                 asset = new Code2KillAsset(main, fx, eliteOverlay, weaponBadgeOverlay);
                 CodeKillCache[cacheKey] = asset;
             }
@@ -687,9 +687,7 @@ namespace TestXboxGameBar.Controls
                 return null;
             }
 
-            if (!assetName.StartsWith("multi", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(assetName, "headshot", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(assetName, "headshot_gold", StringComparison.OrdinalIgnoreCase))
+            if (!assetName.StartsWith("multi", StringComparison.OrdinalIgnoreCase))
             {
                 return null;
             }
@@ -698,10 +696,11 @@ namespace TestXboxGameBar.Controls
             return await LoadCodeKillBitmapAsync(fileName, EliteUpgradeCodeFolder, null, false);
         }
 
-        private static async Task<CanvasBitmap> LoadWeaponBadgeOverlayBitmapAsync(string weaponBadgeKey)
+        private static async Task<CanvasBitmap> LoadWeaponBadgeOverlayBitmapAsync(string assetName, string weaponBadgeKey)
         {
             if (!_weaponBadgeEnabled
                 || !SupportsEliteOrWeaponBadges()
+                || !SupportsWeaponBadgeForAsset(assetName)
                 || string.IsNullOrWhiteSpace(weaponBadgeKey))
             {
                 return null;
@@ -733,15 +732,13 @@ namespace TestXboxGameBar.Controls
             return await LoadCodeKillBitmapAsync(fileName, WeaponBadgeCodeFolder, null, false);
         }
 
+        private static bool SupportsWeaponBadgeForAsset(string assetName)
+        {
+            return assetName.StartsWith("multi", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static string GetEffectiveMainFileName(string assetName, string defaultMainFileName)
         {
-            if (string.Equals(assetName, "knife", StringComparison.OrdinalIgnoreCase)
-                && _eliteEffectLevel > 0
-                && SupportsEliteOrWeaponBadges())
-            {
-                return $"badge_knife_{_eliteEffectLevel}.png";
-            }
-
             return defaultMainFileName;
         }
 

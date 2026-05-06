@@ -115,8 +115,6 @@ namespace TestXboxGameBar
                 ["one_last"] = new TestPreset(1, isLastKill: true),
                 ["gold_first"] = new TestPreset(1, isHeadshot: true, isFirstKill: true),
                 ["gold_last"] = new TestPreset(1, isHeadshot: true, isLastKill: true),
-                ["headshot_vvip"] = new TestPreset(1, isHeadshot: true, animationKey: "headshot_vvip"),
-                ["headshot_gold_vvip"] = new TestPreset(1, isHeadshot: true, animationKey: "headshot_gold_vvip"),
                 ["two"] = new TestPreset(2),
                 ["three"] = new TestPreset(3),
                 ["four"] = new TestPreset(4),

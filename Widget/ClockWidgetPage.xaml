@@ -771,8 +771,6 @@
                                 <ComboBoxItem Tag="one_last">1 L</ComboBoxItem>
                                 <ComboBoxItem Tag="gold_first">GF</ComboBoxItem>
                                 <ComboBoxItem Tag="gold_last">GL</ComboBoxItem>
-                                <ComboBoxItem Tag="headshot_vvip">HV</ComboBoxItem>
-                                <ComboBoxItem Tag="headshot_gold_vvip">GV</ComboBoxItem>
                                 <ComboBoxItem Tag="two">2</ComboBoxItem>
                                 <ComboBoxItem Tag="three">3</ComboBoxItem>
                                 <ComboBoxItem Tag="four">4</ComboBoxItem>
