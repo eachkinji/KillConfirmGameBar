@@ -141,6 +141,7 @@ async fn run() -> Result<()> {
             ply_kills: 0,
             ply_hs_kills: 0,
             last_active_weapon_is_knife: false,
+            last_active_weapon_badge_key: None,
             last_active_weapon_seen_at: None,
             current_round: 0,
             last_round_phase: None,

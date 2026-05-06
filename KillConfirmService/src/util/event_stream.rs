@@ -35,6 +35,7 @@ pub struct TestEventQuery {
     pub main: Option<bool>,
     pub audio: Option<bool>,
     pub animation: Option<String>,
+    pub weapon_badge: Option<String>,
     pub player_name: Option<String>,
     pub steamid: Option<String>,
 }
@@ -242,6 +243,7 @@ pub async fn test_event(
         is_last_kill: query.last.unwrap_or(false),
         play_main_animation: query.main.unwrap_or(true),
         animation_key: query.animation.filter(|value| !value.trim().is_empty()),
+        weapon_badge_key: query.weapon_badge.filter(|value| !value.trim().is_empty()),
         player_name: query
             .player_name
             .unwrap_or_else(|| "Test Player".to_string()),

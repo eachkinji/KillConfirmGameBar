@@ -15,6 +15,7 @@ pub struct Mutable {
     pub ply_kills: u16,
     pub ply_hs_kills: u64,
     pub last_active_weapon_is_knife: bool,
+    pub last_active_weapon_badge_key: Option<String>,
     pub last_active_weapon_seen_at: Option<Instant>,
     pub current_round: u8,
     pub last_round_phase: Option<TrackedRoundPhase>,
@@ -32,6 +33,8 @@ pub struct KillEvent {
     pub play_main_animation: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub animation_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weapon_badge_key: Option<String>,
     pub player_name: String,
     pub steamid: String,
 }
@@ -43,12 +46,13 @@ pub enum TrackedRoundPhase {
     Over,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct PendingLastKill {
     pub recorded_at: Instant,
     pub kill_count: u16,
     pub is_headshot: bool,
     pub is_knife_kill: bool,
+    pub weapon_badge_key: Option<String>,
 }
 
 pub struct AppState {

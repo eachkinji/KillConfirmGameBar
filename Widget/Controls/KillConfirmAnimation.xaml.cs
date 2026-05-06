@@ -31,6 +31,14 @@ namespace TestXboxGameBar.Controls
         private const string GoldHeadshotAssetKey = "goldheadshot";
         private const string KnifeKillAssetKey = "knife_kill";
         private const string LastKillAssetKey = "last_kill";
+        private const string DefaultCodeFolder = "Original";
+        private const string VipCodeFolder = "Vip";
+        private const string AngelicBeastCodeFolder = "AngelicBeast";
+        private const string KnifeCodeFolder = "Knife";
+        private const string FirstLastCodeFolder = "FirstLast";
+        private const string CommonFxCodeFolder = "CommonFx";
+        private const string EliteUpgradeCodeFolder = "EliteUpgrade";
+        private const string WeaponBadgeCodeFolder = "WeaponBadge";
         private const int FrameSequenceFps = 60;
         private const double TargetPlaybackFrames = 77.0;
         private const int LoadingIndicatorDelayMs = 250;
@@ -42,6 +50,9 @@ namespace TestXboxGameBar.Controls
         private static double _contrastBoost;
         private static double _targetPlaybackFps = FrameSequenceFps;
         private static string _iconPack = "default";
+        private static int _eliteEffectLevel;
+        private static bool _weaponBadgeEnabled;
+        private static int _mainAnimationStyle = 1;
 
         private static readonly Dictionary<string, SpriteMetadata> MetadataCache = new Dictionary<string, SpriteMetadata>();
         private static readonly Dictionary<string, IReadOnlyList<SpriteSheetSegment>> SheetCache = new Dictionary<string, IReadOnlyList<SpriteSheetSegment>>();
@@ -88,7 +99,7 @@ namespace TestXboxGameBar.Controls
             PlayCodeKill("multi2");
         }
 
-        public void PlayCodeKill(string assetName)
+        public void PlayCodeKill(string assetName, string weaponBadgeKey = null)
         {
             if (string.IsNullOrWhiteSpace(assetName))
             {
@@ -96,7 +107,7 @@ namespace TestXboxGameBar.Controls
                 return;
             }
 
-            PlayInternal(progress => LoadCodeKillAssetAsync(assetName, progress));
+            PlayInternal(progress => LoadCodeKillAssetAsync(assetName, weaponBadgeKey, progress));
         }
 
         public Task PreloadCommonAnimationsAsync()
@@ -167,7 +178,7 @@ namespace TestXboxGameBar.Controls
             string normalized = string.IsNullOrWhiteSpace(iconPack)
                 ? "default"
                 : iconPack.Trim().ToLowerInvariant();
-            if (normalized != "angelic_beast")
+            if (normalized != "angelic_beast" && normalized != "legacy" && normalized != "vip")
             {
                 normalized = "default";
             }
@@ -179,6 +190,40 @@ namespace TestXboxGameBar.Controls
 
             _iconPack = normalized;
             CodeKillCache.Clear();
+        }
+
+        public static void ConfigureEliteEffectLevel(int eliteLevel)
+        {
+            int normalized = Math.Max(0, Math.Min(3, eliteLevel));
+            if (_eliteEffectLevel == normalized)
+            {
+                return;
+            }
+
+            _eliteEffectLevel = normalized;
+            CodeKillCache.Clear();
+        }
+
+        public static void ConfigureWeaponBadgeEnabled(bool enabled)
+        {
+            if (_weaponBadgeEnabled == enabled)
+            {
+                return;
+            }
+
+            _weaponBadgeEnabled = enabled;
+            CodeKillCache.Clear();
+        }
+
+        public static void ConfigureMainAnimationStyle(int style)
+        {
+            int normalized = Math.Max(1, Math.Min(2, style));
+            if (_mainAnimationStyle == normalized)
+            {
+                return;
+            }
+
+            _mainAnimationStyle = normalized;
         }
 
         private async void PlayInternal(Func<IProgress<int>, Task<AnimationAsset>> assetLoader)
@@ -449,23 +494,33 @@ namespace TestXboxGameBar.Controls
             }
         }
 
-        private async Task<AnimationAsset> LoadCodeKillAssetAsync(string assetName, IProgress<int> progress = null)
+        private async Task<AnimationAsset> LoadCodeKillAssetAsync(string assetName, string weaponBadgeKey, IProgress<int> progress = null)
         {
             string normalizedAssetName = assetName.Trim().ToLowerInvariant();
-            if (!TryGetCodeKillFiles(normalizedAssetName, out string mainFileName, out string fxFileName))
+            string normalizedWeaponBadgeKey = NormalizeWeaponBadgeKey(weaponBadgeKey);
+            if (!TryGetCodeKillFiles(
+                normalizedAssetName,
+                out string mainFileName,
+                out string mainFolder,
+                out string alternatePackFolder,
+                out string fxFileName,
+                out string fxFolder))
             {
                 throw new FileNotFoundException("Unsupported code kill asset: " + assetName);
             }
 
-            string cacheKey = _iconPack + ":" + normalizedAssetName;
+            string cacheKey = _iconPack + ":" + normalizedAssetName + ":" + normalizedWeaponBadgeKey;
             if (!CodeKillCache.TryGetValue(cacheKey, out Code2KillAsset asset))
             {
-                CanvasBitmap main = await LoadCodeKillBitmapAsync(mainFileName, true);
+                string effectiveMainFileName = GetEffectiveMainFileName(normalizedAssetName, mainFileName);
+                CanvasBitmap main = await LoadCodeKillBitmapAsync(effectiveMainFileName, mainFolder, alternatePackFolder, true);
                 progress?.Report(50);
-                CanvasBitmap fx = string.IsNullOrWhiteSpace(fxFileName)
+                CanvasBitmap fx = string.IsNullOrWhiteSpace(fxFileName) || !SupportsKillFxOverlay()
                     ? null
-                    : await LoadCodeKillBitmapAsync(fxFileName, true);
-                asset = new Code2KillAsset(main, fx);
+                    : await LoadCodeKillBitmapAsync(fxFileName, fxFolder, null, false);
+                CanvasBitmap eliteOverlay = await LoadEliteOverlayBitmapAsync(normalizedAssetName);
+                CanvasBitmap weaponBadgeOverlay = await LoadWeaponBadgeOverlayBitmapAsync(normalizedWeaponBadgeKey);
+                asset = new Code2KillAsset(main, fx, eliteOverlay, weaponBadgeOverlay);
                 CodeKillCache[cacheKey] = asset;
             }
 
@@ -481,65 +536,132 @@ namespace TestXboxGameBar.Controls
                 asset);
         }
 
-        private static bool TryGetCodeKillFiles(string assetName, out string mainFileName, out string fxFileName)
+        private static bool TryGetCodeKillFiles(
+            string assetName,
+            out string mainFileName,
+            out string mainFolder,
+            out string alternatePackFolder,
+            out string fxFileName,
+            out string fxFolder)
         {
             switch (assetName)
             {
                 case "multi1":
                     mainFileName = "badge_multi1.png";
+                    mainFolder = DefaultCodeFolder;
+                    alternatePackFolder = AngelicBeastCodeFolder;
                     fxFileName = null;
+                    fxFolder = null;
                     return true;
                 case "multi2":
                 case "code2kill":
                     mainFileName = "badge_multi2.png";
+                    mainFolder = DefaultCodeFolder;
+                    alternatePackFolder = AngelicBeastCodeFolder;
                     fxFileName = "multi2_fx.png";
+                    fxFolder = CommonFxCodeFolder;
                     return true;
                 case "multi3":
                     mainFileName = "badge_multi3.png";
+                    mainFolder = DefaultCodeFolder;
+                    alternatePackFolder = AngelicBeastCodeFolder;
                     fxFileName = "multi3_fx.png";
+                    fxFolder = CommonFxCodeFolder;
                     return true;
                 case "multi4":
                     mainFileName = "badge_multi4.png";
+                    mainFolder = DefaultCodeFolder;
+                    alternatePackFolder = AngelicBeastCodeFolder;
                     fxFileName = "multi4_fx.png";
+                    fxFolder = CommonFxCodeFolder;
                     return true;
                 case "multi5":
                     mainFileName = "badge_multi5.png";
+                    mainFolder = DefaultCodeFolder;
+                    alternatePackFolder = AngelicBeastCodeFolder;
                     fxFileName = "multi5_fx.png";
+                    fxFolder = CommonFxCodeFolder;
                     return true;
                 case "multi6":
                     mainFileName = "badge_multi6.png";
+                    mainFolder = DefaultCodeFolder;
+                    alternatePackFolder = AngelicBeastCodeFolder;
                     fxFileName = "multi6_fx.png";
+                    fxFolder = CommonFxCodeFolder;
                     return true;
                 case "headshot":
                     mainFileName = "badge_headshot.png";
+                    mainFolder = DefaultCodeFolder;
+                    alternatePackFolder = AngelicBeastCodeFolder;
                     fxFileName = null;
+                    fxFolder = null;
                     return true;
                 case "headshot_gold":
                     mainFileName = "badge_headshot_gold.png";
+                    mainFolder = DefaultCodeFolder;
+                    alternatePackFolder = AngelicBeastCodeFolder;
                     fxFileName = null;
+                    fxFolder = null;
+                    return true;
+                case "knife":
+                    mainFileName = "badge_knife.png";
+                    mainFolder = KnifeCodeFolder;
+                    alternatePackFolder = null;
+                    fxFileName = null;
+                    fxFolder = null;
+                    return true;
+                case "firstkill":
+                    mainFileName = "FIRSTKILL.png";
+                    mainFolder = FirstLastCodeFolder;
+                    alternatePackFolder = null;
+                    fxFileName = null;
+                    fxFolder = null;
+                    return true;
+                case "lastkill":
+                    mainFileName = "LASTKILL.png";
+                    mainFolder = FirstLastCodeFolder;
+                    alternatePackFolder = null;
+                    fxFileName = null;
+                    fxFolder = null;
                     return true;
                 case "headshot_vvip":
                     mainFileName = "badge_headshot_vvip.png";
+                    mainFolder = null;
+                    alternatePackFolder = null;
                     fxFileName = null;
+                    fxFolder = null;
                     return true;
                 case "headshot_gold_vvip":
                     mainFileName = "badge_headshot_gold_vvip.png";
+                    mainFolder = null;
+                    alternatePackFolder = null;
                     fxFileName = null;
+                    fxFolder = null;
                     return true;
                 default:
                     mainFileName = null;
+                    mainFolder = null;
+                    alternatePackFolder = null;
                     fxFileName = null;
+                    fxFolder = null;
                     return false;
             }
         }
 
-        private static async Task<CanvasBitmap> LoadCodeKillBitmapAsync(string fileName, bool allowDefaultFallback)
+        private static async Task<CanvasBitmap> LoadCodeKillBitmapAsync(
+            string fileName,
+            string folder,
+            string alternatePackFolder,
+            bool allowDefaultFallback)
         {
-            if (!string.Equals(_iconPack, "default", StringComparison.OrdinalIgnoreCase))
+            string iconPackFolder = GetIconPackFolder();
+            if (!string.IsNullOrWhiteSpace(alternatePackFolder)
+                && !string.IsNullOrWhiteSpace(iconPackFolder))
             {
                 try
                 {
-                    return await LoadBitmapFromApplicationUriAsync($"ms-appx:///Assets/KillConfirmCode/AngelicBeast/{fileName}");
+                    return await LoadBitmapFromApplicationUriAsync(
+                        $"ms-appx:///Assets/KillConfirmCode/{iconPackFolder}/{fileName}");
                 }
                 catch
                 {
@@ -550,7 +672,127 @@ namespace TestXboxGameBar.Controls
                 }
             }
 
+            if (!string.IsNullOrWhiteSpace(folder))
+            {
+                return await LoadBitmapFromApplicationUriAsync($"ms-appx:///Assets/KillConfirmCode/{folder}/{fileName}");
+            }
+
             return await LoadBitmapFromApplicationUriAsync($"ms-appx:///Assets/KillConfirmCode/{fileName}");
+        }
+
+        private static async Task<CanvasBitmap> LoadEliteOverlayBitmapAsync(string assetName)
+        {
+            if (_eliteEffectLevel <= 0 || !SupportsEliteOrWeaponBadges())
+            {
+                return null;
+            }
+
+            if (!assetName.StartsWith("multi", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(assetName, "headshot", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(assetName, "headshot_gold", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            string fileName = $"KillMark_Upgrade{_eliteEffectLevel}.png";
+            return await LoadCodeKillBitmapAsync(fileName, EliteUpgradeCodeFolder, null, false);
+        }
+
+        private static async Task<CanvasBitmap> LoadWeaponBadgeOverlayBitmapAsync(string weaponBadgeKey)
+        {
+            if (!_weaponBadgeEnabled
+                || !SupportsEliteOrWeaponBadges()
+                || string.IsNullOrWhiteSpace(weaponBadgeKey))
+            {
+                return null;
+            }
+
+            string suffix = GetWeaponBadgeVariantSuffix();
+            string fileName;
+            switch (weaponBadgeKey)
+            {
+                case "assault":
+                    fileName = $"badge_Assault{suffix}.png";
+                    break;
+                case "elite":
+                    fileName = $"badge_Elite{suffix}.png";
+                    break;
+                case "scout":
+                    fileName = $"badge_Scout{suffix}.png";
+                    break;
+                case "sniper":
+                    fileName = $"badge_Sniper{suffix}.png";
+                    break;
+                case "knife":
+                    fileName = $"badge_Knife{suffix}.png";
+                    break;
+                default:
+                    return null;
+            }
+
+            return await LoadCodeKillBitmapAsync(fileName, WeaponBadgeCodeFolder, null, false);
+        }
+
+        private static string GetEffectiveMainFileName(string assetName, string defaultMainFileName)
+        {
+            if (string.Equals(assetName, "knife", StringComparison.OrdinalIgnoreCase)
+                && _eliteEffectLevel > 0
+                && SupportsEliteOrWeaponBadges())
+            {
+                return $"badge_knife_{_eliteEffectLevel}.png";
+            }
+
+            return defaultMainFileName;
+        }
+
+        private static string GetIconPackFolder()
+        {
+            switch ((_iconPack ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "vip":
+                    return VipCodeFolder;
+                case "angelic_beast":
+                    return AngelicBeastCodeFolder;
+                default:
+                    return null;
+            }
+        }
+
+        private static bool SupportsEliteOrWeaponBadges()
+        {
+            return string.Equals(_iconPack, "default", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_iconPack, "vip", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool SupportsKillFxOverlay()
+        {
+            return string.Equals(_iconPack, "default", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_iconPack, "vip", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string GetWeaponBadgeVariantSuffix()
+        {
+            return Math.Max(1, Math.Min(3, _eliteEffectLevel)).ToString();
+        }
+
+        private static string NormalizeWeaponBadgeKey(string weaponBadgeKey)
+        {
+            if (string.IsNullOrWhiteSpace(weaponBadgeKey))
+            {
+                return string.Empty;
+            }
+
+            switch (weaponBadgeKey.Trim().ToLowerInvariant())
+            {
+                case "assault":
+                case "elite":
+                case "scout":
+                case "sniper":
+                case "knife":
+                    return weaponBadgeKey.Trim().ToLowerInvariant();
+                default:
+                    return string.Empty;
+            }
         }
 
         private static void ClearSheetCache()
@@ -639,28 +881,7 @@ namespace TestXboxGameBar.Controls
             double mainProgress = Clamp01(timeSec / 1.2833);
             double fxProgress = Clamp01(timeSec / 0.48);
 
-            TransformSample main = SampleTrack(new[]
-            {
-                new TransformKey(0.0000, -180, 96, 4.80, 1.00),
-                new TransformKey(0.0222, -180, -180, 2.75, 1.00),
-                new TransformKey(0.0444, -164, -196, 2.28, 1.00),
-                new TransformKey(0.0667, -159, -202, 2.02, 1.00),
-                new TransformKey(0.0889, -167, -194, 1.80, 1.00),
-                new TransformKey(0.1111, -162, -198, 1.62, 1.00),
-                new TransformKey(0.1333, -170, -191, 1.46, 1.00),
-                new TransformKey(0.1556, -166, -194, 1.32, 1.00),
-                new TransformKey(0.1778, -172, -188, 1.22, 1.00),
-                new TransformKey(0.2000, -169, -190, 1.15, 1.00),
-                new TransformKey(0.2222, -174, -186, 1.10, 1.00),
-                new TransformKey(0.2444, -172, -187, 1.06, 1.00),
-                new TransformKey(0.2667, -176, -184, 1.03, 1.00),
-                new TransformKey(0.2889, -175, -184, 1.01, 1.00),
-                new TransformKey(0.3111, -179, -181, 1.00, 1.00),
-                new TransformKey(0.3500, -180, -180, 1.00, 1.00),
-                new TransformKey(0.7143, -180, -180, 1.00, 1.00),
-                new TransformKey(0.8571, -180, -180, 1.00, 0.55),
-                new TransformKey(1.0000, -180, -180, 1.00, 0.00)
-            }, mainProgress);
+            TransformSample main = SampleMainTrack(frame, mainProgress);
 
             TransformSample fxTrack = SampleTrack(new[]
             {
@@ -684,7 +905,10 @@ namespace TestXboxGameBar.Controls
                 new TransformKey(1.0000, 0, 0, 1.12, 0.00)
             }, fxProgress);
 
-            ApplyCode2KillFramePatch(frame, ref main);
+            if (_mainAnimationStyle == 1 || frame >= 5)
+            {
+                ApplyCode2KillFramePatch(frame, ref main);
+            }
 
             double fillWindow = Math.Max(0, 1 - Math.Abs(fxProgress - 0.24) / 0.14);
             TransformSample fx = new TransformSample(
@@ -693,12 +917,12 @@ namespace TestXboxGameBar.Controls
                 fxTrack.Scale * (1 + 0.28 * fillWindow),
                 fxTrack.Opacity);
 
-            if (frame >= 5 && frame <= 15)
+            if ((_mainAnimationStyle == 1 || frame >= 5) && frame >= 5 && frame <= 15)
             {
                 main.Scale = 1.0;
             }
 
-            if (frame >= 16)
+            if ((_mainAnimationStyle == 1 || frame >= 5) && frame >= 16)
             {
                 main.X = -180;
                 main.Y = -180;
@@ -749,6 +973,26 @@ namespace TestXboxGameBar.Controls
             DrawCenteredScaledImage(
                 drawingSession,
                 _currentCodeAsset.Main,
+                main.X,
+                main.Y,
+                360,
+                360,
+                main.Scale,
+                main.Opacity);
+
+            DrawCenteredScaledImage(
+                drawingSession,
+                _currentCodeAsset.Overlay,
+                main.X,
+                main.Y,
+                360,
+                360,
+                main.Scale,
+                main.Opacity);
+
+            DrawCenteredScaledImage(
+                drawingSession,
+                _currentCodeAsset.WeaponBadge,
                 main.X,
                 main.Y,
                 360,
@@ -899,8 +1143,16 @@ namespace TestXboxGameBar.Controls
                 return;
             }
 
-            double scaledWidth = width * scale;
-            double scaledHeight = height * scale;
+            double imageWidth = image.SizeInPixels.Width;
+            double imageHeight = image.SizeInPixels.Height;
+            if (imageWidth <= 0 || imageHeight <= 0)
+            {
+                return;
+            }
+
+            double fitScale = Math.Min(width / imageWidth, height / imageHeight);
+            double scaledWidth = imageWidth * fitScale * scale;
+            double scaledHeight = imageHeight * fitScale * scale;
             double anchoredX = (CodeKillFrameWidth / 2.0) + x;
             double anchoredY = (CodeKillFrameHeight / 2.0) + y;
             var target = new Rect(
@@ -995,6 +1247,45 @@ namespace TestXboxGameBar.Controls
             }
 
             return keys[keys.Count - 1].ToSample();
+        }
+
+        private static TransformSample SampleMainTrack(int frame, double progress)
+        {
+            if (_mainAnimationStyle == 2 && frame <= 4)
+            {
+                return SampleTrack(new[]
+                {
+                    new TransformKey(0.0000, -180, -180, 0.16, 0.00),
+                    new TransformKey(0.0180, -180, -180, 0.34, 0.35),
+                    new TransformKey(0.0360, -180, -180, 0.58, 0.68),
+                    new TransformKey(0.0540, -180, -180, 0.82, 0.90),
+                    new TransformKey(0.0720, -180, -180, 1.00, 1.00),
+                    new TransformKey(1.0000, -180, -180, 1.00, 1.00)
+                }, progress);
+            }
+
+            return SampleTrack(new[]
+            {
+                new TransformKey(0.0000, -180, 96, 4.80, 1.00),
+                new TransformKey(0.0222, -180, -180, 2.75, 1.00),
+                new TransformKey(0.0444, -164, -196, 2.28, 1.00),
+                new TransformKey(0.0667, -159, -202, 2.02, 1.00),
+                new TransformKey(0.0889, -167, -194, 1.80, 1.00),
+                new TransformKey(0.1111, -162, -198, 1.62, 1.00),
+                new TransformKey(0.1333, -170, -191, 1.46, 1.00),
+                new TransformKey(0.1556, -166, -194, 1.32, 1.00),
+                new TransformKey(0.1778, -172, -188, 1.22, 1.00),
+                new TransformKey(0.2000, -169, -190, 1.15, 1.00),
+                new TransformKey(0.2222, -174, -186, 1.10, 1.00),
+                new TransformKey(0.2444, -172, -187, 1.06, 1.00),
+                new TransformKey(0.2667, -176, -184, 1.03, 1.00),
+                new TransformKey(0.2889, -175, -184, 1.01, 1.00),
+                new TransformKey(0.3111, -179, -181, 1.00, 1.00),
+                new TransformKey(0.3500, -180, -180, 1.00, 1.00),
+                new TransformKey(0.7143, -180, -180, 1.00, 1.00),
+                new TransformKey(0.8571, -180, -180, 1.00, 0.55),
+                new TransformKey(1.0000, -180, -180, 1.00, 0.00)
+            }, progress);
         }
 
         private static double Clamp01(double value)
@@ -1105,14 +1396,18 @@ namespace TestXboxGameBar.Controls
 
         private sealed class Code2KillAsset
         {
-            public Code2KillAsset(CanvasBitmap main, CanvasBitmap fx)
+            public Code2KillAsset(CanvasBitmap main, CanvasBitmap fx, CanvasBitmap overlay, CanvasBitmap weaponBadge)
             {
                 Main = main;
                 Fx = fx;
+                Overlay = overlay;
+                WeaponBadge = weaponBadge;
             }
 
             public CanvasBitmap Main { get; }
             public CanvasBitmap Fx { get; }
+            public CanvasBitmap Overlay { get; }
+            public CanvasBitmap WeaponBadge { get; }
         }
 
         private readonly struct TransformKey

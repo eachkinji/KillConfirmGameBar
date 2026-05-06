@@ -37,7 +37,6 @@ namespace TestXboxGameBar
         private const double ScaleUpFactor = 1.1;
         private const double ScaleDownFactor = 0.9;
         private const int StartupPreloadDelayMs = 250;
-        private const int StreakBadgeDisplayDurationMs = 1800;
         private const double DefaultBrightnessValue = 70;
         private const double DefaultContrastValue = 80;
         private const double DefaultAudioVolumeValue = 100;
@@ -52,6 +51,9 @@ namespace TestXboxGameBar
         private const string AudioVolumeSettingKey = "AudioVolume";
         private const string PlaybackFpsSettingKey = "AnimationPlaybackFps";
         private const string IconPackSettingKey = "KillIconPack";
+        private const string EliteEffectSettingKey = "KillEliteEffect";
+        private const string WeaponBadgeSettingKey = "KillWeaponBadge";
+        private const string MainAnimationStyleSettingKey = "MainAnimationStyle";
         private const string AnimationPlacementSettingKey = "AnimationPlacement";
         private const string AnimationOffsetSettingKey = "AnimationOffset";
         private const string AnimationScaleSettingKey = "AnimationScale";
@@ -138,6 +140,9 @@ namespace TestXboxGameBar
         private bool _suppressVisualAdjustmentEvents;
         private bool _suppressVoicePackEvents;
         private bool _suppressIconPackEvents;
+        private bool _suppressEliteEffectEvents;
+        private bool _suppressWeaponBadgeEvents;
+        private bool _suppressMainAnimationStyleEvents;
         private bool _suppressLanguageEvents = true;
         private bool _isPageActive;
         private StorageFolder _csInstallFolder;
@@ -154,7 +159,6 @@ namespace TestXboxGameBar
         private int _statusHintIndex;
         private DateTimeOffset _lastGsiStatusCheck = DateTimeOffset.MinValue;
         private readonly DispatcherTimer _controlPanelStateTimer;
-        private readonly DispatcherTimer _streakBadgeTimer;
         private readonly DispatcherTimer _statusHintTimer;
 
         public ClockWidgetPage()
@@ -171,12 +175,6 @@ namespace TestXboxGameBar
                 Interval = TimeSpan.FromMilliseconds(ControlPanelStateRefreshMs)
             };
             _controlPanelStateTimer.Tick += OnControlPanelStateTimerTick;
-
-            _streakBadgeTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(StreakBadgeDisplayDurationMs)
-            };
-            _streakBadgeTimer.Tick += OnStreakBadgeTimerTick;
 
             _statusHintTimer = new DispatcherTimer
             {
@@ -199,6 +197,9 @@ namespace TestXboxGameBar
 
             LoadVisualAdjustmentSettings();
             LoadIconPackSetting();
+            LoadEliteEffectSetting();
+            LoadWeaponBadgeSetting();
+            LoadMainAnimationStyleSetting();
             LoadAnimationPlacementSettings();
             LoadVoicePackSetting();
             _controlPanelStateTimer.Start();
@@ -223,10 +224,8 @@ namespace TestXboxGameBar
             }
 
             _controlPanelStateTimer.Stop();
-            _streakBadgeTimer.Stop();
             _statusHintTimer.Stop();
             _widget = null;
-            HideStreakBadge();
             _ = ShutdownCompanionAsync();
 
             base.OnNavigatedFrom(e);
@@ -383,22 +382,16 @@ namespace TestXboxGameBar
             }
         }
 
-        private void OnLanguageSelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void OnLanguageToggleClick(object sender, RoutedEventArgs e)
         {
             if (_suppressLanguageEvents)
             {
                 return;
             }
 
-            string tag = null;
-            if (LanguageSelector.SelectedItem is ComboBoxItem item)
-            {
-                tag = item.Tag as string;
-            }
-
-            LocalizationManager.SetLanguage(string.Equals(tag, "zh-CN", StringComparison.OrdinalIgnoreCase)
-                ? UiLanguage.SimplifiedChinese
-                : UiLanguage.English);
+            LocalizationManager.SetLanguage(LocalizationManager.Current == UiLanguage.SimplifiedChinese
+                ? UiLanguage.English
+                : UiLanguage.SimplifiedChinese);
             ApplyLanguage();
         }
 
@@ -484,12 +477,6 @@ namespace TestXboxGameBar
         private void OnStatusHintTimerTick(object sender, object e)
         {
             AdvanceStatusHint();
-        }
-
-        private void OnStreakBadgeTimerTick(object sender, object e)
-        {
-            _streakBadgeTimer.Stop();
-            HideStreakBadge();
         }
 
         private void OnConnectionStateChanged(object sender, KillEventConnectionState state)
@@ -680,19 +667,20 @@ namespace TestXboxGameBar
             _suppressLanguageEvents = true;
             try
             {
-                string target = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "zh-CN" : "en-US";
-                foreach (object option in LanguageSelector.Items)
-                {
-                    if (option is ComboBoxItem item
-                        && item.Tag is string tag
-                        && string.Equals(tag, target, StringComparison.OrdinalIgnoreCase))
-                    {
-                        LanguageSelector.SelectedItem = item;
-                        return;
-                    }
-                }
+                bool isChinese = LocalizationManager.Current == UiLanguage.SimplifiedChinese;
+                LanguageEnglishChip.Background = isChinese
+                    ? new SolidColorBrush(Color.FromArgb(0, 0, 0, 0))
+                    : new SolidColorBrush(Color.FromArgb(255, 74, 85, 99));
+                LanguageChineseChip.Background = isChinese
+                    ? new SolidColorBrush(Color.FromArgb(255, 74, 85, 99))
+                    : new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
 
-                LanguageSelector.SelectedIndex = 0;
+                LanguageEnglishText.Foreground = isChinese
+                    ? new SolidColorBrush(Color.FromArgb(255, 183, 192, 203))
+                    : new SolidColorBrush(Color.FromArgb(255, 17, 21, 26));
+                LanguageChineseText.Foreground = isChinese
+                    ? new SolidColorBrush(Color.FromArgb(255, 17, 21, 26))
+                    : new SolidColorBrush(Color.FromArgb(255, 183, 192, 203));
             }
             finally
             {
@@ -703,7 +691,8 @@ namespace TestXboxGameBar
         private void ApplyLanguage()
         {
             RefreshStatusHint(true);
-            ToolTipService.SetToolTip(LanguageSelector, "Language / 语言");
+            LoadLanguageSelector();
+            ToolTipService.SetToolTip(LanguageToggleButton, "Language / \u8BED\u8A00");
 
             ToolTipService.SetToolTip(OpenGuideButton, LocalizationManager.Text("OpenGuideTooltip"));
             ToolTipService.SetToolTip(OpenLogsButton, LocalizationManager.Text("OpenLogsTooltip"));
@@ -1200,6 +1189,44 @@ namespace TestXboxGameBar
             string iconPack = GetSelectedIconPack();
             ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] = iconPack;
             Controls.KillConfirmAnimation.ConfigureIconPack(iconPack);
+            UpdateEliteEffectSelectorState();
+            UpdateWeaponBadgeSelectorState();
+        }
+
+        private void OnEliteEffectSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressEliteEffectEvents)
+            {
+                return;
+            }
+
+            int eliteLevel = GetSelectedEliteEffectLevel();
+            ApplicationData.Current.LocalSettings.Values[EliteEffectSettingKey] = eliteLevel;
+            Controls.KillConfirmAnimation.ConfigureEliteEffectLevel(eliteLevel);
+        }
+
+        private void OnWeaponBadgeSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressWeaponBadgeEvents)
+            {
+                return;
+            }
+
+            bool enabled = IsWeaponBadgeEnabled();
+            ApplicationData.Current.LocalSettings.Values[WeaponBadgeSettingKey] = enabled;
+            Controls.KillConfirmAnimation.ConfigureWeaponBadgeEnabled(enabled);
+        }
+
+        private void OnMainAnimationStyleSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressMainAnimationStyleEvents)
+            {
+                return;
+            }
+
+            int style = GetSelectedMainAnimationStyle();
+            ApplicationData.Current.LocalSettings.Values[MainAnimationStyleSettingKey] = style;
+            Controls.KillConfirmAnimation.ConfigureMainAnimationStyle(style);
         }
 
         private void LoadIconPackSetting()
@@ -1212,6 +1239,63 @@ namespace TestXboxGameBar
 
             SelectIconPack(iconPack);
             Controls.KillConfirmAnimation.ConfigureIconPack(GetSelectedIconPack());
+            UpdateEliteEffectSelectorState();
+            UpdateWeaponBadgeSelectorState();
+        }
+
+        private void LoadEliteEffectSetting()
+        {
+            object stored = ApplicationData.Current.LocalSettings.Values[EliteEffectSettingKey];
+            int eliteLevel = 0;
+            if (stored is int intValue)
+            {
+                eliteLevel = intValue;
+            }
+            else if (stored is string text && int.TryParse(text, out int parsed))
+            {
+                eliteLevel = parsed;
+            }
+
+            eliteLevel = Math.Max(0, Math.Min(3, eliteLevel));
+            SelectEliteEffectLevel(eliteLevel);
+            Controls.KillConfirmAnimation.ConfigureEliteEffectLevel(eliteLevel);
+            UpdateEliteEffectSelectorState();
+        }
+
+        private void LoadWeaponBadgeSetting()
+        {
+            object stored = ApplicationData.Current.LocalSettings.Values[WeaponBadgeSettingKey];
+            bool enabled = false;
+            if (stored is bool boolValue)
+            {
+                enabled = boolValue;
+            }
+            else if (stored is string text && bool.TryParse(text, out bool parsed))
+            {
+                enabled = parsed;
+            }
+
+            SelectWeaponBadgeEnabled(enabled);
+            Controls.KillConfirmAnimation.ConfigureWeaponBadgeEnabled(enabled);
+            UpdateWeaponBadgeSelectorState();
+        }
+
+        private void LoadMainAnimationStyleSetting()
+        {
+            object stored = ApplicationData.Current.LocalSettings.Values[MainAnimationStyleSettingKey];
+            int style = 1;
+            if (stored is int intValue)
+            {
+                style = intValue;
+            }
+            else if (stored is string text && int.TryParse(text, out int parsed))
+            {
+                style = parsed;
+            }
+
+            style = Math.Max(1, Math.Min(2, style));
+            SelectMainAnimationStyle(style);
+            Controls.KillConfirmAnimation.ConfigureMainAnimationStyle(style);
         }
 
         private string GetSelectedIconPack()
@@ -1224,6 +1308,69 @@ namespace TestXboxGameBar
             }
 
             return "default";
+        }
+
+        private bool IsLegacyIconPackSelected()
+        {
+            return string.Equals(GetSelectedIconPack(), "legacy", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool SupportsOverlayEnhancementsForSelectedIconPack()
+        {
+            string iconPack = GetSelectedIconPack();
+            return string.Equals(iconPack, "default", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(iconPack, "vip", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private int GetSelectedEliteEffectLevel()
+        {
+            if (EliteEffectSelector == null)
+            {
+                return 0;
+            }
+
+            if (EliteEffectSelector.SelectedItem is ComboBoxItem item
+                && item.Tag is string tag
+                && int.TryParse(tag, out int level))
+            {
+                return Math.Max(0, Math.Min(3, level));
+            }
+
+            return 0;
+        }
+
+        private bool IsWeaponBadgeEnabled()
+        {
+            if (WeaponBadgeSelector == null)
+            {
+                return false;
+            }
+
+            if (WeaponBadgeSelector.SelectedItem is ComboBoxItem item
+                && item.Tag is string tag
+                && tag == "1")
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private int GetSelectedMainAnimationStyle()
+        {
+            if (MainAnimationStyleSelector == null)
+            {
+                return 1;
+            }
+
+            if (MainAnimationStyleSelector.SelectedItem is ComboBoxItem item
+                && item.Tag is string tag
+                && int.TryParse(tag, out int style))
+            {
+                return Math.Max(1, Math.Min(2, style));
+            }
+
+            return 1;
         }
 
         private void SelectIconPack(string iconPack)
@@ -1248,6 +1395,120 @@ namespace TestXboxGameBar
             {
                 _suppressIconPackEvents = false;
             }
+        }
+
+        private void SelectEliteEffectLevel(int eliteLevel)
+        {
+            if (EliteEffectSelector == null)
+            {
+                return;
+            }
+
+            _suppressEliteEffectEvents = true;
+            try
+            {
+                string target = Math.Max(0, Math.Min(3, eliteLevel)).ToString();
+                foreach (object option in EliteEffectSelector.Items)
+                {
+                    if (option is ComboBoxItem item
+                        && item.Tag is string tag
+                        && string.Equals(tag, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        EliteEffectSelector.SelectedItem = item;
+                        return;
+                    }
+                }
+
+                EliteEffectSelector.SelectedIndex = 0;
+            }
+            finally
+            {
+                _suppressEliteEffectEvents = false;
+            }
+        }
+
+        private void SelectWeaponBadgeEnabled(bool enabled)
+        {
+            if (WeaponBadgeSelector == null)
+            {
+                return;
+            }
+
+            _suppressWeaponBadgeEvents = true;
+            try
+            {
+                string target = enabled ? "1" : "0";
+                foreach (object option in WeaponBadgeSelector.Items)
+                {
+                    if (option is ComboBoxItem item
+                        && item.Tag is string tag
+                        && string.Equals(tag, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        WeaponBadgeSelector.SelectedItem = item;
+                        return;
+                    }
+                }
+
+                WeaponBadgeSelector.SelectedIndex = 0;
+            }
+            finally
+            {
+                _suppressWeaponBadgeEvents = false;
+            }
+        }
+
+        private void SelectMainAnimationStyle(int style)
+        {
+            if (MainAnimationStyleSelector == null)
+            {
+                return;
+            }
+
+            _suppressMainAnimationStyleEvents = true;
+            try
+            {
+                string target = Math.Max(1, Math.Min(2, style)).ToString();
+                foreach (object option in MainAnimationStyleSelector.Items)
+                {
+                    if (option is ComboBoxItem item
+                        && item.Tag is string tag
+                        && string.Equals(tag, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        MainAnimationStyleSelector.SelectedItem = item;
+                        return;
+                    }
+                }
+
+                MainAnimationStyleSelector.SelectedIndex = 0;
+            }
+            finally
+            {
+                _suppressMainAnimationStyleEvents = false;
+            }
+        }
+
+        private void UpdateEliteEffectSelectorState()
+        {
+            if (EliteEffectSelector == null)
+            {
+                return;
+            }
+
+            bool supportsEliteOverlay = SupportsOverlayEnhancementsForSelectedIconPack();
+            EliteEffectSelector.IsEnabled = supportsEliteOverlay;
+            EliteEffectSelector.Opacity = supportsEliteOverlay ? 1.0 : 0.55;
+        }
+
+        private void UpdateWeaponBadgeSelectorState()
+        {
+            if (WeaponBadgeSelector == null)
+            {
+                return;
+            }
+
+            bool supportsWeaponBadge = SupportsOverlayEnhancementsForSelectedIconPack();
+            WeaponBadgeSelector.IsEnabled = supportsWeaponBadge;
+            WeaponBadgeSelector.Opacity = supportsWeaponBadge ? 1.0 : 0.55;
         }
 
         private void LoadVoicePackSetting()
@@ -1475,7 +1736,6 @@ namespace TestXboxGameBar
             }
 
             PlayBadgeAnimation(killEvent);
-            UpdateStreakBadge(killEvent);
         }
 
         private void PlayPrimaryAnimation(KillEvent killEvent)
@@ -1485,16 +1745,18 @@ namespace TestXboxGameBar
                 return;
             }
 
+            bool useLegacyAnimationPack = IsLegacyIconPackSelected();
+
             if (string.Equals(killEvent.AnimationKey, "code2kill", StringComparison.OrdinalIgnoreCase))
             {
-                PrimaryKillAnimation.PlayCodeKill("multi2");
+                PrimaryKillAnimation.PlayCodeKill("multi2", killEvent.WeaponBadgeKey);
                 return;
             }
 
             if (string.Equals(killEvent.AnimationKey, "headshot_vvip", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(killEvent.AnimationKey, "headshot_gold_vvip", StringComparison.OrdinalIgnoreCase))
             {
-                PrimaryKillAnimation.PlayCodeKill(killEvent.AnimationKey);
+                PrimaryKillAnimation.PlayCodeKill(killEvent.AnimationKey, killEvent.WeaponBadgeKey);
                 return;
             }
 
@@ -1502,7 +1764,14 @@ namespace TestXboxGameBar
             {
                 if (killEvent.IsKnifeKill)
                 {
-                    PrimaryKillAnimation.PlayNamed(KnifeKillAssetKey);
+                    if (useLegacyAnimationPack)
+                    {
+                        PrimaryKillAnimation.PlayNamed(KnifeKillAssetKey);
+                    }
+                    else
+                    {
+                        PrimaryKillAnimation.PlayCodeKill("knife", killEvent.WeaponBadgeKey);
+                    }
                     return;
                 }
 
@@ -1510,25 +1779,51 @@ namespace TestXboxGameBar
                 {
                     if (killEvent.IsFirstKill || killEvent.IsLastKill)
                     {
-                        PrimaryKillAnimation.PlayCodeKill("headshot_gold");
+                        if (useLegacyAnimationPack)
+                        {
+                            PrimaryKillAnimation.PlayNamed(GoldHeadshotAssetKey);
+                        }
+                        else
+                        {
+                            PrimaryKillAnimation.PlayCodeKill("headshot_gold", killEvent.WeaponBadgeKey);
+                        }
                         return;
                     }
 
-                    PrimaryKillAnimation.PlayCodeKill("headshot");
+                    if (useLegacyAnimationPack)
+                    {
+                        PrimaryKillAnimation.PlayNamed(HeadshotAssetKey);
+                    }
+                    else
+                    {
+                        PrimaryKillAnimation.PlayCodeKill("headshot", killEvent.WeaponBadgeKey);
+                    }
                     return;
                 }
 
-                if (string.Equals(GetSelectedIconPack(), "angelic_beast", StringComparison.OrdinalIgnoreCase))
+                if (!useLegacyAnimationPack)
                 {
-                    PrimaryKillAnimation.PlayCodeKill("multi1");
+                    if (string.Equals(GetSelectedIconPack(), "angelic_beast", StringComparison.OrdinalIgnoreCase))
+                    {
+                        PrimaryKillAnimation.PlayCodeKill("multi1", killEvent.WeaponBadgeKey);
+                        return;
+                    }
+
+                    PrimaryKillAnimation.PlayCodeKill("multi1", killEvent.WeaponBadgeKey);
                     return;
                 }
             }
 
             if (killEvent.KillCount >= 2)
             {
+                if (useLegacyAnimationPack)
+                {
+                    PrimaryKillAnimation.Play(killEvent.KillCount);
+                    return;
+                }
+
                 int codeKillCount = Math.Max(2, Math.Min(6, killEvent.KillCount));
-                PrimaryKillAnimation.PlayCodeKill("multi" + codeKillCount);
+                PrimaryKillAnimation.PlayCodeKill("multi" + codeKillCount, killEvent.WeaponBadgeKey);
                 return;
             }
 
@@ -1542,15 +1837,31 @@ namespace TestXboxGameBar
                 return;
             }
 
+            bool useLegacyAnimationPack = IsLegacyIconPackSelected();
+
             if (killEvent.IsLastKill)
             {
-                BadgeKillAnimation.PlayNamed(LastKillAssetKey);
+                if (useLegacyAnimationPack)
+                {
+                    BadgeKillAnimation.PlayNamed(LastKillAssetKey);
+                }
+                else
+                {
+                    BadgeKillAnimation.PlayCodeKill("lastkill");
+                }
                 return;
             }
 
             if (killEvent.IsFirstKill)
             {
-                BadgeKillAnimation.PlayNamed(FirstKillAssetKey);
+                if (useLegacyAnimationPack)
+                {
+                    BadgeKillAnimation.PlayNamed(FirstKillAssetKey);
+                }
+                else
+                {
+                    BadgeKillAnimation.PlayCodeKill("firstkill");
+                }
             }
         }
 
@@ -1871,7 +2182,7 @@ namespace TestXboxGameBar
             }
 
             _statusHintIndex = (_statusHintIndex + 1) % hints.Count;
-            ApplyStatusHint(hints[_statusHintIndex]);
+            ApplyStatusHint(hints[_statusHintIndex], _statusHintIndex, hints.Count);
         }
 
         private void RefreshStatusHint(bool resetCycle)
@@ -1891,7 +2202,7 @@ namespace TestXboxGameBar
                 _statusHintIndex = 0;
             }
 
-            ApplyStatusHint(hints[_statusHintIndex]);
+            ApplyStatusHint(hints[_statusHintIndex], _statusHintIndex, hints.Count);
         }
 
         private IReadOnlyList<StatusHint> BuildStatusHints()
@@ -1929,15 +2240,16 @@ namespace TestXboxGameBar
             return _displayMode == XboxGameBarDisplayMode.Foreground;
         }
 
-        private void ApplyStatusHint(StatusHint hint)
+        private void ApplyStatusHint(StatusHint hint, int index, int total)
         {
-            ShowStatusHint(hint.Text, hint.Color);
+            ShowStatusHint(hint.Text, hint.Color, index, total);
         }
 
-        private void ShowStatusHint(string text, Color color)
+        private void ShowStatusHint(string text, Color color, int index = 0, int total = 1)
         {
             PinHintText.Text = text;
             PinHintText.Foreground = new SolidColorBrush(color);
+            StatusHintPagerText.Text = total > 0 ? $"{index + 1}/{total}" : string.Empty;
             ToolTipService.SetToolTip(StatusHintBox, text);
         }
 
@@ -2339,31 +2651,6 @@ namespace TestXboxGameBar
             {
                 return "v?";
             }
-        }
-
-        private void UpdateStreakBadge(KillEvent killEvent)
-        {
-            if (killEvent == null || !killEvent.PlayMainAnimation || killEvent.KillCount < 7)
-            {
-                HideStreakBadge();
-                return;
-            }
-
-            string streakText = killEvent.KillCount > 9
-                ? "x9+"
-                : $"x{killEvent.KillCount}";
-
-            StreakBadgeText.Text = streakText;
-            StreakBadge.Visibility = Visibility.Visible;
-            StreakBadge.Opacity = 1.0;
-            _streakBadgeTimer.Stop();
-            _streakBadgeTimer.Start();
-        }
-
-        private void HideStreakBadge()
-        {
-            StreakBadge.Visibility = Visibility.Collapsed;
-            StreakBadge.Opacity = 0.0;
         }
 
         private void UpdateVisualAdjustmentLabels(double brightness, double contrast)

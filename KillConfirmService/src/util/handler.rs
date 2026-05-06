@@ -20,6 +20,18 @@ use super::state::{AppState, KillEvent, PendingLastKill, TrackedRoundPhase};
 const KNIFE_KILL_GRACE_WINDOW: Duration = Duration::from_millis(750);
 const FINAL_KILL_GRACE_WINDOW: Duration = Duration::from_millis(1500);
 
+fn map_weapon_badge_key(weapon_type: WeaponType) -> Option<&'static str> {
+    match weapon_type {
+        WeaponType::Rifle => Some("assault"),
+        WeaponType::MachineGun | WeaponType::Shotgun => Some("elite"),
+        WeaponType::SMG => Some("scout"),
+        WeaponType::SniperRifle => Some("sniper"),
+        WeaponType::Knife => Some("knife"),
+        WeaponType::Pistol => None,
+        _ => None,
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum ApiError {}
 
@@ -87,6 +99,13 @@ pub async fn update(
         .values()
         .find(|weapon| matches!(weapon.state, WeaponState::Active))
         .map(|weapon| matches!(weapon.r#type, Some(WeaponType::Knife)));
+    let current_active_weapon_badge_key = ply
+        .weapons
+        .values()
+        .find(|weapon| matches!(weapon.state, WeaponState::Active))
+        .and_then(|weapon| weapon.r#type.clone())
+        .and_then(map_weapon_badge_key)
+        .map(str::to_string);
 
     let binding = app_state.mutable.read().await;
     let current_kills = ply_state.round_kills;
@@ -100,12 +119,21 @@ pub async fn update(
     let previous_round = binding.current_round;
     let previous_round_phase = binding.last_round_phase;
     let had_first_kill_in_round = binding.has_first_kill_in_round;
-    let pending_last_kill = binding.pending_last_kill;
+    let pending_last_kill = binding.pending_last_kill.clone();
     let recent_weapon_is_knife = binding.last_active_weapon_is_knife
         && binding
             .last_active_weapon_seen_at
             .map(|seen_at| now.saturating_duration_since(seen_at) <= KNIFE_KILL_GRACE_WINDOW)
             .unwrap_or(false);
+    let recent_weapon_badge_key = binding
+        .last_active_weapon_badge_key
+        .clone()
+        .filter(|_| {
+            binding
+                .last_active_weapon_seen_at
+                .map(|seen_at| now.saturating_duration_since(seen_at) <= KNIFE_KILL_GRACE_WINDOW)
+                .unwrap_or(false)
+        });
     drop(binding);
 
     let steamid = ply.steam_id.as_deref().unwrap_or("");
@@ -128,7 +156,7 @@ pub async fn update(
     let mut pending_last_kill_for_next = if should_clear_pending_last_kill {
         None
     } else {
-        pending_last_kill
+        pending_last_kill.clone()
     };
     let mut kill_event_to_send = None;
     let mut badge_only_event_to_send = None;
@@ -137,6 +165,7 @@ pub async fn update(
         let is_headshot = current_hs_kills > origin_hs_kills;
         // Do not use the current frame here: players often switch to knife right after a gun kill.
         let is_knife_kill = recent_weapon_is_knife;
+        let weapon_badge_key = recent_weapon_badge_key.clone();
         let is_last_kill = phase_transition_to_over;
         let is_first_kill = !is_last_kill && !first_kill_already_seen;
 
@@ -148,6 +177,7 @@ pub async fn update(
                 kill_count: current_kills,
                 is_headshot,
                 is_knife_kill,
+                weapon_badge_key: weapon_badge_key.clone(),
             });
         }
 
@@ -159,6 +189,7 @@ pub async fn update(
             is_last_kill,
             play_main_animation: true,
             animation_key: None,
+            weapon_badge_key: weapon_badge_key.clone(),
             player_name: player_name.clone(),
             steamid: steamid.to_string(),
         });
@@ -204,6 +235,7 @@ pub async fn update(
                     play_main_animation: pending_last_kill.kill_count == 1
                         && pending_last_kill.is_headshot,
                     animation_key: None,
+                    weapon_badge_key: pending_last_kill.weapon_badge_key.clone(),
                     player_name: player_name.clone(),
                     steamid: steamid.to_string(),
                 });
@@ -255,6 +287,7 @@ pub async fn update(
         binding.last_active_weapon_is_knife = is_knife;
         binding.last_active_weapon_seen_at = Some(now);
     }
+    binding.last_active_weapon_badge_key = current_active_weapon_badge_key;
 
     drop(binding);
 
