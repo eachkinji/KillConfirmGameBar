@@ -27,11 +27,16 @@ pub struct LuaScript {
 impl LuaScript {
     /// Load a Lua script from the given path
     pub fn load(script_path: &str) -> Result<Self> {
-        let lua = Lua::new();
         let script_content = fs::read_to_string(script_path)
             .with_context(|| format!("failed to read Lua script: {script_path}"))?;
 
-        lua.load(&script_content)
+        Self::from_source(&script_content, script_path)
+    }
+
+    pub fn from_source(script_content: &str, script_path: &str) -> Result<Self> {
+        let lua = Lua::new();
+
+        lua.load(script_content)
             .exec()
             .with_context(|| format!("failed to execute Lua script: {script_path}"))?;
 

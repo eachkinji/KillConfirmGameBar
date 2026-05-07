@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Threading.Tasks;
+using Windows.ApplicationModel;
 using Windows.Storage;
 using Windows.Storage.AccessCache;
 
@@ -65,6 +66,15 @@ namespace TestXboxGameBar.Services
 
         [DataMember]
         public bool OwnsFolder { get; set; }
+    }
+
+    public sealed class VoicePackBuildOptions
+    {
+        public IReadOnlyDictionary<string, StorageFile> SelectedFiles { get; set; }
+
+        public IReadOnlyDictionary<string, bool> CommonOverlayEnabled { get; set; }
+
+        public bool UseBuiltInDefaultCommonOverlay { get; set; }
     }
 
     public static class PackCatalogService
@@ -316,9 +326,22 @@ namespace TestXboxGameBar.Services
             await SaveAsync(catalog);
         }
 
-        public static async Task CreateVoicePackAsync(string displayName, IReadOnlyDictionary<string, StorageFile> selectedFiles)
+        public static async Task CreateVoicePackAsync(string displayName, VoicePackBuildOptions options)
         {
-            if (selectedFiles == null || selectedFiles.Count == 0)
+            if (options == null)
+            {
+                return;
+            }
+
+            IReadOnlyDictionary<string, StorageFile> selectedFiles = options.SelectedFiles
+                ?? new Dictionary<string, StorageFile>(StringComparer.OrdinalIgnoreCase);
+            IReadOnlyDictionary<string, bool> commonOverlayEnabled = options.CommonOverlayEnabled
+                ?? new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+            bool hasSelectedFiles = selectedFiles.Count > 0;
+            bool shouldAddBuiltInDefaultCommon = options.UseBuiltInDefaultCommonOverlay
+                && !selectedFiles.ContainsKey("common_overlay.wav");
+            if (!hasSelectedFiles && !shouldAddBuiltInDefaultCommon)
             {
                 return;
             }
@@ -338,9 +361,20 @@ namespace TestXboxGameBar.Services
                 await pair.Value.CopyAsync(packFolder, pair.Key, NameCollisionOption.ReplaceExisting);
             }
 
+            var availableKeys = new HashSet<string>(selectedFiles.Keys, StringComparer.OrdinalIgnoreCase);
+            if (shouldAddBuiltInDefaultCommon)
+            {
+                StorageFile bundledCommon = await GetBundledDefaultCommonOverlayFileAsync();
+                if (bundledCommon != null)
+                {
+                    await bundledCommon.CopyAsync(packFolder, "common_overlay.wav", NameCollisionOption.ReplaceExisting);
+                    availableKeys.Add("common_overlay.wav");
+                }
+            }
+
             await FileIO.WriteTextAsync(
                 await packFolder.CreateFileAsync("sound.lua", CreationCollisionOption.ReplaceExisting),
-                BuildGeneratedVoiceLua(selectedFiles.Keys));
+                BuildGeneratedVoiceLua(availableKeys, commonOverlayEnabled));
 
             PackCatalog catalog = await LoadAsync();
             catalog.VoicePacks.Add(new VoicePackItem
@@ -519,34 +553,71 @@ namespace TestXboxGameBar.Services
             }
         }
 
-        private static string BuildGeneratedVoiceLua(IEnumerable<string> selectedKeys)
+        private static async Task<StorageFile> GetBundledDefaultCommonOverlayFileAsync()
+        {
+            try
+            {
+                return await StorageFile.GetFileFromApplicationUriAsync(
+                    new Uri("ms-appx:///KillConfirmService/sounds/crossfire_swat_gr/common.wav"));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string BuildGeneratedVoiceLua(
+            IEnumerable<string> selectedKeys,
+            IReadOnlyDictionary<string, bool> commonOverlayEnabled)
         {
             string availabilityEntries = string.Join(
                 ",\n    ",
                 selectedKeys.Select(key => "[\"" + Path.GetFileNameWithoutExtension(key) + "\"] = true"));
+
+            string overlayEntries = string.Join(
+                ",\n    ",
+                commonOverlayEnabled
+                    .Where(pair => pair.Value)
+                    .Select(pair => "[\"" + Path.GetFileNameWithoutExtension(pair.Key) + "\"] = true"));
 
             return
                 "function get_sounds(ctx)\n" +
                 "    local sounds = {}\n" +
                 "    local base = ctx.base_dir .. \"/\"\n" +
                 "    local available = {\n    " + availabilityEntries + "\n    }\n\n" +
+                "    local use_common_overlay = {\n    " + overlayEntries + "\n    }\n" +
+                "    local common_overlay_played = false\n\n" +
                 "    local function add_if_present(name)\n" +
                 "        if available[name] then\n" +
                 "            table.insert(sounds, base .. name .. \".wav\")\n" +
                 "        end\n" +
                 "    end\n\n" +
+                "    local function add_common_overlay_if_enabled(name)\n" +
+                "        if common_overlay_played then\n" +
+                "            return\n" +
+                "        end\n" +
+                "        if use_common_overlay[name] and available[\"common_overlay\"] then\n" +
+                "            common_overlay_played = true\n" +
+                "            table.insert(sounds, base .. \"common_overlay.wav\")\n" +
+                "        end\n" +
+                "    end\n\n" +
                 "    if ctx.is_first_kill or ctx.is_last_kill then\n" +
                 "        add_if_present(\"firstandlast\")\n" +
+                "        add_common_overlay_if_enabled(\"firstandlast\")\n" +
                 "    end\n\n" +
                 "    if ctx.play_main_audio and ctx.kill_count >= 2 then\n" +
                 "        local voiced_kill_count = math.min(ctx.kill_count, 8)\n" +
                 "        add_if_present(tostring(voiced_kill_count))\n" +
+                "        add_common_overlay_if_enabled(tostring(voiced_kill_count))\n" +
                 "    elseif ctx.is_knife_kill then\n" +
                 "        add_if_present(\"knife\")\n" +
+                "        add_common_overlay_if_enabled(\"knife\")\n" +
                 "    elseif ctx.is_headshot then\n" +
                 "        add_if_present(\"headshot\")\n" +
+                "        add_common_overlay_if_enabled(\"headshot\")\n" +
                 "    elseif ctx.play_main_audio and ctx.kill_count == 1 then\n" +
                 "        add_if_present(\"common\")\n" +
+                "        add_common_overlay_if_enabled(\"common\")\n" +
                 "    end\n\n" +
                 "    return sounds\n" +
                 "end\n";

@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs;
+use std::path::Path;
 
 use super::lua_script::LuaScript;
 
@@ -50,8 +51,15 @@ impl Preset {
 
     pub fn load_custom(preset_name: &str, display_name: &str, folder_path: &str) -> Result<Self> {
         let script_path = format!("{folder_path}/sound.lua");
-        let lua_script = LuaScript::load(&script_path)
-            .with_context(|| format!("failed to load Lua script for custom preset '{display_name}'"))?;
+        let lua_script = if Path::new(&script_path).exists() {
+            LuaScript::load(&script_path)
+                .with_context(|| format!("failed to load Lua script for custom preset '{display_name}'"))?
+        } else {
+            let generated_script = build_generated_voice_lua(folder_path);
+            LuaScript::from_source(&generated_script, &script_path).with_context(|| {
+                format!("failed to generate Lua script for custom preset '{display_name}'")
+            })?
+        };
 
         Ok(Self {
             lua_script,
@@ -62,6 +70,78 @@ impl Preset {
             base_dir: folder_path.replace('\\', "/"),
         })
     }
+}
+
+fn build_generated_voice_lua(folder_path: &str) -> String {
+    let known_files = [
+        ("common_overlay.wav", "common_overlay"),
+        ("common.wav", "common"),
+        ("2.wav", "2"),
+        ("3.wav", "3"),
+        ("4.wav", "4"),
+        ("5.wav", "5"),
+        ("6.wav", "6"),
+        ("7.wav", "7"),
+        ("8.wav", "8"),
+        ("headshot.wav", "headshot"),
+        ("knife.wav", "knife"),
+        ("firstandlast.wav", "firstandlast"),
+    ];
+
+    let available_entries = known_files
+        .iter()
+        .filter_map(|(file_name, key)| {
+            let path = Path::new(folder_path).join(file_name);
+            if path.exists() {
+                Some(format!("[\"{key}\"] = true"))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(",\n    ");
+
+    format!(
+        "function get_sounds(ctx)\n\
+         \tlocal sounds = {{}}\n\
+         \tlocal base = ctx.base_dir .. \"/\"\n\
+         \tlocal available = {{\n    {available_entries}\n\t}}\n\n\
+         \tlocal common_overlay_played = false\n\n\
+         \tlocal function add_if_present(name)\n\
+         \t\tif available[name] then\n\
+         \t\t\ttable.insert(sounds, base .. name .. \".wav\")\n\
+         \t\tend\n\
+         \tend\n\n\
+         \tlocal function add_common_overlay_if_present()\n\
+         \t\tif common_overlay_played then\n\
+         \t\t\treturn\n\
+         \t\tend\n\
+         \t\tif available[\"common_overlay\"] then\n\
+         \t\t\tcommon_overlay_played = true\n\
+         \t\t\ttable.insert(sounds, base .. \"common_overlay.wav\")\n\
+         \t\tend\n\
+         \tend\n\n\
+         \tif ctx.is_first_kill or ctx.is_last_kill then\n\
+         \t\tadd_if_present(\"firstandlast\")\n\
+         \t\tadd_common_overlay_if_present()\n\
+         \tend\n\n\
+         \tif ctx.play_main_audio and ctx.kill_count >= 2 then\n\
+         \t\tlocal voiced_kill_count = math.min(ctx.kill_count, 8)\n\
+         \t\tadd_if_present(tostring(voiced_kill_count))\n\
+         \t\tadd_common_overlay_if_present()\n\
+         \telseif ctx.is_knife_kill then\n\
+         \t\tadd_if_present(\"knife\")\n\
+         \t\tadd_common_overlay_if_present()\n\
+         \telseif ctx.is_headshot then\n\
+         \t\tadd_if_present(\"headshot\")\n\
+         \t\tadd_common_overlay_if_present()\n\
+         \telseif ctx.play_main_audio and ctx.kill_count == 1 then\n\
+         \t\tadd_if_present(\"common\")\n\
+         \t\tadd_common_overlay_if_present()\n\
+         \tend\n\n\
+         \treturn sounds\n\
+         end\n"
+    )
 }
 
 pub fn list() -> Result<()> {

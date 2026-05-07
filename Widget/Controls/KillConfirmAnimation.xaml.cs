@@ -183,7 +183,10 @@ namespace TestXboxGameBar.Controls
             string normalized = string.IsNullOrWhiteSpace(iconPack)
                 ? "default"
                 : iconPack.Trim().ToLowerInvariant();
-            if (normalized != "angelic_beast" && normalized != "legacy" && normalized != "vip")
+            if (normalized != "angelic_beast"
+                && normalized != "legacy"
+                && normalized != "vip"
+                && !PackCatalogService.IsImportedIconPackKey(normalized))
             {
                 normalized = "default";
             }
