@@ -7,6 +7,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
+using TestXboxGameBar.Services;
 using Windows.Data.Json;
 using Windows.Foundation;
 using Windows.Graphics.Imaging;
@@ -163,9 +164,13 @@ namespace TestXboxGameBar.Controls
 
             _brightnessBoost = normalizedBrightness;
             _contrastBoost = normalizedContrast;
-            ClearSheetCache();
-            _startupPreloadTask = null;
-            _preloadTask = null;
+            CodeKillCache.Clear();
+            if (string.Equals(_iconPack, "legacy", StringComparison.OrdinalIgnoreCase))
+            {
+                SheetCache.Clear();
+                _startupPreloadTask = null;
+                _preloadTask = null;
+            }
         }
 
         public static void ConfigurePlaybackFps(double playbackFps)
@@ -188,8 +193,16 @@ namespace TestXboxGameBar.Controls
                 return;
             }
 
+            bool legacyTransition = string.Equals(_iconPack, "legacy", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "legacy", StringComparison.OrdinalIgnoreCase);
             _iconPack = normalized;
             CodeKillCache.Clear();
+            if (legacyTransition)
+            {
+                SheetCache.Clear();
+                _startupPreloadTask = null;
+                _preloadTask = null;
+            }
         }
 
         public static void ConfigureEliteEffectLevel(int eliteLevel)
@@ -654,6 +667,15 @@ namespace TestXboxGameBar.Controls
             string alternatePackFolder,
             bool allowDefaultFallback)
         {
+            if (PackCatalogService.IsImportedIconPackKey(_iconPack))
+            {
+                CanvasBitmap imported = await TryLoadImportedIconBitmapAsync(fileName);
+                if (imported != null)
+                {
+                    return imported;
+                }
+            }
+
             string iconPackFolder = GetIconPackFolder();
             if (!string.IsNullOrWhiteSpace(alternatePackFolder)
                 && !string.IsNullOrWhiteSpace(iconPackFolder))
@@ -678,6 +700,25 @@ namespace TestXboxGameBar.Controls
             }
 
             return await LoadBitmapFromApplicationUriAsync($"ms-appx:///Assets/KillConfirmCode/{fileName}");
+        }
+
+        private static async Task<CanvasBitmap> TryLoadImportedIconBitmapAsync(string fileName)
+        {
+            try
+            {
+                StorageFolder folder = await PackCatalogService.GetImportedIconFolderAsync(_iconPack);
+                if (folder == null)
+                {
+                    return null;
+                }
+
+                StorageFile file = await folder.GetFileAsync(fileName);
+                return await LoadBitmapFromStorageFileAsync(file);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static async Task<CanvasBitmap> LoadEliteOverlayBitmapAsync(string assetName)
@@ -739,6 +780,13 @@ namespace TestXboxGameBar.Controls
 
         private static string GetEffectiveMainFileName(string assetName, string defaultMainFileName)
         {
+            if (string.Equals(assetName, "knife", StringComparison.OrdinalIgnoreCase)
+                && SupportsEliteOrWeaponBadges()
+                && _eliteEffectLevel > 0)
+            {
+                return $"badge_knife_{Math.Min(3, _eliteEffectLevel)}.png";
+            }
+
             return defaultMainFileName;
         }
 
@@ -807,7 +855,11 @@ namespace TestXboxGameBar.Controls
         {
             var uri = new Uri(uriText);
             StorageFile file = await StorageFile.GetFileFromApplicationUriAsync(uri);
+            return await LoadBitmapFromStorageFileAsync(file);
+        }
 
+        private static async Task<CanvasBitmap> LoadBitmapFromStorageFileAsync(StorageFile file)
+        {
             using (IRandomAccessStream stream = await file.OpenReadAsync())
             {
                 BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);

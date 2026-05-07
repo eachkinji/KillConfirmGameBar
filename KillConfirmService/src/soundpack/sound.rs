@@ -78,6 +78,7 @@ pub async fn play_audio(
             preset_name: preset.preset_name.clone(),
             master_name: preset.master_name.clone(),
             variant: preset.variant.clone(),
+            base_dir: preset.base_dir.clone(),
         };
 
         // Get sound files from Lua script

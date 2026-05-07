@@ -90,6 +90,11 @@ async fn run() -> Result<()> {
         return Ok(());
     }
 
+    if args.open_settings_launcher {
+        launch_settings_launcher().context("failed to launch settings helper")?;
+        return Ok(());
+    }
+
     if let Some(port) = args.free_port {
         free_local_port(port).with_context(|| format!("failed to free port {port}"))?;
         return Ok(());
@@ -276,6 +281,28 @@ fn open_runtime_log_folder() {
     if let Err(error) = Command::new("explorer.exe").arg(&folder).spawn() {
         service_log(&format!("failed to open runtime log folder: {error}"));
     }
+}
+
+fn launch_settings_launcher() -> Result<()> {
+    let exe_dir = env::current_exe()
+        .context("failed to get current executable path")?
+        .parent()
+        .map(Path::to_path_buf)
+        .context("failed to get executable directory")?;
+    let launcher_path = exe_dir.join("killconfirm-settings-launcher.exe");
+    service_log(&format!(
+        "launching packaged settings helper: {}",
+        launcher_path.display()
+    ));
+
+    let child = Command::new(&launcher_path)
+        .spawn()
+        .with_context(|| format!("failed to spawn {}", launcher_path.display()))?;
+    service_log(&format!(
+        "packaged settings helper spawned successfully. pid={}",
+        child.id()
+    ));
+    Ok(())
 }
 
 fn free_local_port(port: u16) -> Result<()> {

@@ -30,3 +30,4 @@ tower-http = { version = "0.6.7", features = ["timeout", "trace"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 mlua = { version = "0.11", features = ["lua54", "vendored", "send", "serialize"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }

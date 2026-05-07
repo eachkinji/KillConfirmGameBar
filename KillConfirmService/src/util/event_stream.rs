@@ -58,6 +58,8 @@ pub struct GsiStatusResponse {
 #[derive(Debug, Deserialize)]
 pub struct SoundPackRequest {
     pub preset: String,
+    pub custom_path: Option<String>,
+    pub display_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -197,28 +199,39 @@ pub async fn audio_volume(
 
 pub async fn soundpack(State(app_state): State<Arc<AppState>>) -> Json<SoundPackResponse> {
     let preset = app_state.preset.read().await;
-    Json(soundpack_response(&preset.preset_name))
+    Json(soundpack_response(&preset.preset_name, &preset.display_name))
 }
 
 pub async fn set_soundpack(
     State(app_state): State<Arc<AppState>>,
     Json(request): Json<SoundPackRequest>,
 ) -> Result<Json<SoundPackResponse>, (axum::http::StatusCode, String)> {
-    let preset_name = resolve_soundpack_alias(&request.preset).ok_or_else(|| {
-        (
-            axum::http::StatusCode::BAD_REQUEST,
-            "unsupported sound pack".to_string(),
-        )
-    })?;
-    let preset = Preset::load(preset_name)
-        .map_err(|error| (axum::http::StatusCode::BAD_REQUEST, error.to_string()))?;
+    let (preset_name, preset, display_name) = if let Some(custom_path) = request.custom_path.as_deref() {
+        let display_name = request
+            .display_name
+            .clone()
+            .unwrap_or_else(|| request.preset.clone());
+        let preset = Preset::load_custom(&request.preset, &display_name, custom_path)
+            .map_err(|error| (axum::http::StatusCode::BAD_REQUEST, error.to_string()))?;
+        (request.preset.as_str(), preset, display_name)
+    } else {
+        let preset_name = resolve_soundpack_alias(&request.preset).ok_or_else(|| {
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                "unsupported sound pack".to_string(),
+            )
+        })?;
+        let preset = Preset::load(preset_name)
+            .map_err(|error| (axum::http::StatusCode::BAD_REQUEST, error.to_string()))?;
+        (preset_name, preset, soundpack_display_name(preset_name).to_string())
+    };
 
     {
         let mut current = app_state.preset.write().await;
         *current = preset;
     }
 
-    Ok(Json(soundpack_response(preset_name)))
+    Ok(Json(soundpack_response(preset_name, &display_name)))
 }
 
 pub async fn events_ws(
@@ -306,10 +319,10 @@ fn resolve_soundpack_alias(value: &str) -> Option<&'static str> {
     }
 }
 
-fn soundpack_response(preset_name: &str) -> SoundPackResponse {
+fn soundpack_response(preset_name: &str, display_name: &str) -> SoundPackResponse {
     SoundPackResponse {
         preset: preset_name.to_string(),
-        display_name: soundpack_display_name(preset_name).to_string(),
+        display_name: display_name.to_string(),
         available: SOUND_PACK_OPTIONS.to_vec(),
     }
 }

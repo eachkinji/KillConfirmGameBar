@@ -25,9 +25,14 @@
                 <TextBlock
                     x:Name="InstructionText"
                     Margin="0,8,0,0"
-                    Text="Use this guide to set up the Xbox Game Bar widget before playing."
                     FontSize="16"
                     Foreground="#B7C7D8"
+                    TextWrapping="WrapWholeWords" />
+                <TextBlock
+                    x:Name="ShortcutText"
+                    Margin="0,12,0,0"
+                    FontSize="13"
+                    Foreground="#8EA4B8"
                     TextWrapping="WrapWholeWords" />
             </StackPanel>
 
@@ -37,8 +42,8 @@
                 HorizontalAlignment="Center"
                 ColumnSpacing="22">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.05*" />
-                    <ColumnDefinition Width="0.95*" />
+                    <ColumnDefinition Width="1.08*" />
+                    <ColumnDefinition Width="0.92*" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Spacing="12">
@@ -50,35 +55,40 @@
                         CornerRadius="8">
                         <StackPanel Spacing="10">
                             <TextBlock
-                                x:Name="GuideSetupTitleText"
+                                x:Name="VoiceCollectionsTitleText"
                                 FontSize="17"
                                 FontWeight="SemiBold"
-                                Foreground="#F7FBFF"
-                                Text="Setup checklist" />
+                                Foreground="#F7FBFF" />
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    x:Name="VoiceCollectionsHintText"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    Foreground="#8EA4B8"
+                                    TextWrapping="WrapWholeWords" />
+                                <Button
+                                    x:Name="ImportVoicePackButton"
+                                    Grid.Column="1"
+                                    Padding="12,6"
+                                    Click="OnImportVoicePackClick"
+                                    Content="导入语音包" />
+                                <Button
+                                    x:Name="CreateVoicePackButton"
+                                    Grid.Column="2"
+                                    Padding="12,6"
+                                    Click="OnCreateVoicePackClick"
+                                    Content="图形化新建" />
+                            </Grid>
                             <TextBlock
-                                x:Name="GuidePinText"
-                                FontSize="13"
-                                Foreground="#C8D6E4"
-                                Text="1. Press Win+G, open Kill Confirm Overlay, then pin it from the top-right."
-                                TextWrapping="WrapWholeWords" />
-                            <TextBlock
-                                x:Name="GuideLightsText"
-                                FontSize="13"
-                                Foreground="#C8D6E4"
-                                Text="2. SVC and CFG both need to be green before playing."
-                                TextWrapping="WrapWholeWords" />
-                            <TextBlock
-                                x:Name="GuideCfgText"
-                                FontSize="13"
-                                Foreground="#C8D6E4"
-                                Text="3. Select the CS2 root folder if CFG is not ready. The app remembers it."
-                                TextWrapping="WrapWholeWords" />
-                            <TextBlock
-                                x:Name="GuideTestText"
-                                FontSize="13"
-                                Foreground="#C8D6E4"
-                                Text="4. Use the play button to test animation and sound."
-                                TextWrapping="WrapWholeWords" />
+                                x:Name="VoiceVisibleCountText"
+                                FontSize="12"
+                                Foreground="#BFD0E3" />
+                            <StackPanel x:Name="VoicePackListPanel" Spacing="8" />
                         </StackPanel>
                     </Border>
 
@@ -90,163 +100,81 @@
                         CornerRadius="8">
                         <StackPanel Spacing="10">
                             <TextBlock
-                                x:Name="GuideControlsTitleText"
+                                x:Name="IconCollectionsTitleText"
                                 FontSize="17"
                                 FontWeight="SemiBold"
-                                Foreground="#F7FBFF"
-                                Text="Panel controls" />
+                                Foreground="#F7FBFF" />
+                            <Grid ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    x:Name="IconCollectionsHintText"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    Foreground="#8EA4B8"
+                                    TextWrapping="WrapWholeWords" />
+                                <Button
+                                    x:Name="ImportIconPackButton"
+                                    Grid.Column="1"
+                                    Padding="12,6"
+                                    Click="OnImportIconPackClick"
+                                    Content="导入图标包" />
+                                <Button
+                                    x:Name="CreateIconPackButton"
+                                    Grid.Column="2"
+                                    Padding="12,6"
+                                    Click="OnCreateIconPackClick"
+                                    Content="图形化新建" />
+                            </Grid>
                             <TextBlock
-                                x:Name="GuideVoiceText"
-                                FontSize="13"
-                                Foreground="#C8D6E4"
-                                Text="VOICE changes the sound pack."
-                                TextWrapping="WrapWholeWords" />
-                            <TextBlock
-                                x:Name="GuideViewText"
-                                FontSize="13"
-                                Foreground="#C8D6E4"
-                                Text="VIEW adjusts window position, icon size, brightness, and contrast."
-                                TextWrapping="WrapWholeWords" />
-                            <TextBlock
-                                x:Name="GuideServiceText"
-                                FontSize="13"
-                                Foreground="#C8D6E4"
-                                Text="The companion process starts with the widget and closes with it."
-                                TextWrapping="WrapWholeWords" />
+                                x:Name="IconVisibleCountText"
+                                FontSize="12"
+                                Foreground="#BFD0E3" />
+                            <StackPanel x:Name="IconPackListPanel" Spacing="8" />
                         </StackPanel>
                     </Border>
 
-                    <TextBlock
-                        x:Name="ShortcutText"
-                        FontSize="13"
-                        Foreground="#8EA4B8"
-                        Text="Tip: Win+G opens Xbox Game Bar. The button was removed because Windows does not always honor the URI from packaged apps."
-                        TextWrapping="WrapWholeWords" />
                 </StackPanel>
 
-                <Border
+                <StackPanel
                     Grid.Column="1"
-                    Padding="16"
-                    Background="#101A23"
-                    BorderBrush="#2B3D4C"
-                    BorderThickness="1"
-                    CornerRadius="8">
-                    <StackPanel Spacing="14">
-                        <TextBlock
-                            x:Name="GuidePreviewTitleText"
-                            FontSize="17"
-                            FontWeight="SemiBold"
-                            Foreground="#F7FBFF"
-                            Text="Widget map" />
-
-                        <Border
-                            Padding="12"
-                            Background="#172432"
-                            BorderBrush="#375066"
-                            BorderThickness="1"
-                            CornerRadius="8">
-                            <StackPanel Spacing="8">
+                    Spacing="12">
+                    <Border
+                        Padding="16"
+                        Background="#101A23"
+                        BorderBrush="#2B3D4C"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <StackPanel Spacing="12">
+                            <TextBlock
+                                x:Name="StructureTitleText"
+                                FontSize="17"
+                                FontWeight="SemiBold"
+                                Foreground="#F7FBFF" />
+                            <TextBlock
+                                x:Name="StructureBodyText"
+                                FontSize="13"
+                                Foreground="#C8D6E4"
+                                TextWrapping="WrapWholeWords" />
+                            <Border
+                                Padding="12"
+                                Background="#172432"
+                                BorderBrush="#375066"
+                                BorderThickness="1"
+                                CornerRadius="8">
                                 <TextBlock
-                                    x:Name="MockPinText"
-                                    FontSize="10"
-                                    FontWeight="SemiBold"
-                                    Foreground="#FFFFE7A3"
-                                    Text="Pin the widget first" />
-
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <Border
-                                        Width="48"
-                                        Height="28"
-                                        Background="#223040"
-                                        BorderBrush="#3E5164"
-                                        BorderThickness="1"
-                                        CornerRadius="8">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" Spacing="5">
-                                            <Border Width="8" Height="8" Background="#34D399" CornerRadius="4" />
-                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="#D8E7F5" Text="SVC" />
-                                        </StackPanel>
-                                    </Border>
-                                    <Border
-                                        Width="48"
-                                        Height="28"
-                                        Background="#223040"
-                                        BorderBrush="#3E5164"
-                                        BorderThickness="1"
-                                        CornerRadius="8">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal" Spacing="5">
-                                            <Border Width="8" Height="8" Background="#34D399" CornerRadius="4" />
-                                            <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="#D8E7F5" Text="CFG" />
-                                        </StackPanel>
-                                    </Border>
-                                    <TextBlock
-                                        x:Name="MockReadyText"
-                                        VerticalAlignment="Center"
-                                        FontSize="10"
-                                        FontWeight="SemiBold"
-                                        Foreground="#34D399"
-                                        Text="Ready when both are green" />
-                                </StackPanel>
-
-                                <Grid ColumnSpacing="6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="50" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Height="28" Background="#1E2833" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
-                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#BFD0E3" Text="VOICE" />
-                                    </Border>
-                                    <Border Grid.Column="1" Height="28" Background="#223040" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
-                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" Foreground="#D8E7F5" Text="swat / tiger / cfsex" />
-                                    </Border>
-                                </Grid>
-
-                                <Grid ColumnSpacing="6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="50" />
-                                        <ColumnDefinition Width="28" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Height="28" Background="#1E2833" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
-                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#BFD0E3" Text="CFG" />
-                                    </Border>
-                                    <Border Grid.Column="1" Height="28" Background="#24303D" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
-                                        <PathIcon HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#D8E7F5" Data="M2,4 L6,4 L7.2,6 L14,6 L14,13 L2,13 Z" />
-                                    </Border>
-                                    <TextBlock
-                                        x:Name="MockCfgText"
-                                        Grid.Column="2"
-                                        VerticalAlignment="Center"
-                                        FontSize="10"
-                                        Foreground="#BFD0E3"
-                                        Text="Pick CS2 root folder" />
-                                </Grid>
-
-                                <Grid ColumnSpacing="6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="50" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="28" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Height="28" Background="#1E2833" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
-                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#BFD0E3" Text="TEST" />
-                                    </Border>
-                                    <Border Grid.Column="1" Height="28" Background="#223040" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
-                                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" Foreground="#D8E7F5" Text="2 / 3 / HS / Knife" />
-                                    </Border>
-                                    <Border Grid.Column="2" Height="28" Background="#24303D" BorderBrush="#3E5164" BorderThickness="1" CornerRadius="8">
-                                        <PathIcon HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#F8FAFC" Data="M4,2 L13,8 L4,14 Z" />
-                                    </Border>
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
-                        <Image
-                            Height="150"
-                            HorizontalAlignment="Center"
-                            Source="Assets/KillConfirm/1killre/frame_00286.png"
-                            Stretch="Uniform" />
-                    </StackPanel>
-                </Border>
+                                    x:Name="StructureListText"
+                                    FontFamily="Consolas"
+                                    FontSize="12"
+                                    Foreground="#D8E7F5"
+                                    TextWrapping="WrapWholeWords" />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </Grid>
         </Grid>
     </ScrollViewer>

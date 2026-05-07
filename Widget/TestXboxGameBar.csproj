@@ -123,6 +123,7 @@
     </Compile>
     <Compile Include="Services\KillEventClient.cs" />
     <Compile Include="Services\LocalizationManager.cs" />
+    <Compile Include="Services\PackCatalogService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
 

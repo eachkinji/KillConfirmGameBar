@@ -107,16 +107,16 @@ namespace TestXboxGameBar.Services
 
         private async void OnMessageReceived(MessageWebSocket sender, MessageWebSocketMessageReceivedEventArgs args)
         {
-            string message;
-            using (DataReader reader = args.GetDataReader())
-            {
-                reader.UnicodeEncoding = UnicodeEncoding.Utf8;
-                message = reader.ReadString(reader.UnconsumedBufferLength);
-            }
-
-            KillEvent killEvent;
             try
             {
+                string message;
+                using (DataReader reader = args.GetDataReader())
+                {
+                    reader.UnicodeEncoding = UnicodeEncoding.Utf8;
+                    message = reader.ReadString(reader.UnconsumedBufferLength);
+                }
+
+                KillEvent killEvent;
                 JsonObject json = JsonObject.Parse(message);
                 killEvent = new KillEvent
                 {
@@ -131,22 +131,24 @@ namespace TestXboxGameBar.Services
                     PlayerName = json.GetNamedString("player_name", string.Empty),
                     SteamId = json.GetNamedString("steamid", string.Empty)
                 };
+
+                if (_dispatcher == null)
+                {
+                    KillReceived?.Invoke(this, killEvent);
+                    return;
+                }
+
+                await _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    KillReceived?.Invoke(this, killEvent);
+                });
             }
             catch
             {
-                return;
+                CleanupSocket();
+                SetConnectionState(KillEventConnectionState.Disconnected);
+                ScheduleReconnect();
             }
-
-            if (_dispatcher == null)
-            {
-                KillReceived?.Invoke(this, killEvent);
-                return;
-            }
-
-            await _dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                KillReceived?.Invoke(this, killEvent);
-            });
         }
 
         private void OnClosed(IWebSocket sender, WebSocketClosedEventArgs args)

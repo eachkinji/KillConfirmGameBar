@@ -17,6 +17,7 @@ namespace TestXboxGameBar
     sealed partial class App : Application
     {
         private const string WidgetId = "KillConfirmWidget";
+        private const string SettingsWindowTitle = "Kill Confirm Overlay Advanced Settings";
         private const string RuntimeLogFileName = "gamebar-widget.log";
         private const long MaxRuntimeLogBytes = 512 * 1024;
         private static int? _guideViewId;
@@ -51,6 +52,7 @@ namespace TestXboxGameBar
                         rootFrame.Navigate(typeof(MainPage), e.Arguments);
                     }
 
+                    ApplySettingsWindowTitle();
                     Window.Current.Activate();
                 }
             }
@@ -91,6 +93,7 @@ namespace TestXboxGameBar
                         }
 
                         guideFrame.Navigate(typeof(MainPage));
+                        ApplySettingsWindowTitle();
                         Window.Current.Activate();
                         return;
                     }
@@ -130,6 +133,18 @@ namespace TestXboxGameBar
             return rootFrame;
         }
 
+        private static void ApplySettingsWindowTitle()
+        {
+            try
+            {
+                ApplicationView.GetForCurrentView().Title = SettingsWindowTitle;
+            }
+            catch (Exception ex)
+            {
+                Log("Failed to apply settings window title: " + ex.Message);
+            }
+        }
+
         internal static async System.Threading.Tasks.Task<bool> TryShowGuideWindowAsync()
         {
             try
@@ -157,7 +172,7 @@ namespace TestXboxGameBar
                     Window.Current.Activate();
 
                     ApplicationView view = ApplicationView.GetForCurrentView();
-                    view.Title = "Kill Confirm Overlay Advanced Settings";
+                    view.Title = SettingsWindowTitle;
                     view.Consolidated += OnGuideViewConsolidated;
                     newViewId = view.Id;
                 });

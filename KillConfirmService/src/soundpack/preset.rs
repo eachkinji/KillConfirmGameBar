@@ -8,8 +8,10 @@ use super::lua_script::LuaScript;
 pub struct Preset {
     pub lua_script: LuaScript,
     pub preset_name: String,
+    pub display_name: String,
     pub master_name: String,
     pub variant: Option<String>,
+    pub base_dir: String,
 }
 
 impl Preset {
@@ -39,8 +41,25 @@ impl Preset {
         Ok(Self {
             lua_script,
             preset_name: preset_name.to_string(),
+            display_name: preset_name.to_string(),
             master_name: master_name.to_string(),
             variant: variant.map(|s| s.to_string()),
+            base_dir: format!("sounds/{preset_name}"),
+        })
+    }
+
+    pub fn load_custom(preset_name: &str, display_name: &str, folder_path: &str) -> Result<Self> {
+        let script_path = format!("{folder_path}/sound.lua");
+        let lua_script = LuaScript::load(&script_path)
+            .with_context(|| format!("failed to load Lua script for custom preset '{display_name}'"))?;
+
+        Ok(Self {
+            lua_script,
+            preset_name: preset_name.to_string(),
+            display_name: display_name.to_string(),
+            master_name: preset_name.to_string(),
+            variant: None,
+            base_dir: folder_path.replace('\\', "/"),
         })
     }
 }

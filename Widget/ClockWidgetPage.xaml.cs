@@ -104,6 +104,7 @@ namespace TestXboxGameBar
         private static readonly TimeSpan ServiceStartupPollInterval = TimeSpan.FromMilliseconds(250);
         private const string FreeServicePortParameterGroupId = "FreeServicePort";
         private const string OpenRuntimeLogsParameterGroupId = "OpenRuntimeLogs";
+        private const string OpenSettingsWindowParameterGroupId = "OpenSettingsWindow";
         private static readonly SemaphoreSlim ServiceStartupGate = new SemaphoreSlim(1, 1);
         private static readonly IReadOnlyDictionary<string, TestPreset> TestPresets =
             new Dictionary<string, TestPreset>(StringComparer.OrdinalIgnoreCase)
@@ -163,6 +164,7 @@ namespace TestXboxGameBar
         {
             InitializeComponent();
             AnimationLayer.SizeChanged += OnAnimationLayerSizeChanged;
+            PackCatalogService.CatalogChanged += OnPackCatalogChanged;
             VersionText.Text = GetCompactDisplayVersion();
             ToolTipService.SetToolTip(VersionText, GetDisplayVersion());
             LoadLanguageSelector();
@@ -194,14 +196,10 @@ namespace TestXboxGameBar
             }
 
             LoadVisualAdjustmentSettings();
-            LoadIconPackSetting();
-            LoadEliteEffectSetting();
-            LoadWeaponBadgeSetting();
-            LoadMainAnimationStyleSetting();
             LoadAnimationPlacementSettings();
-            LoadVoicePackSetting();
             _controlPanelStateTimer.Start();
             _statusHintTimer.Start();
+            _ = InitializePackSelectorsAsync();
 
             StartKillEventClient();
             ConfigureWidgetCapabilities();
@@ -229,6 +227,94 @@ namespace TestXboxGameBar
             base.OnNavigatedFrom(e);
         }
 
+        private async void OnPackCatalogChanged(object sender, EventArgs e)
+        {
+            if (!_isPageActive)
+            {
+                return;
+            }
+
+            await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, async () =>
+            {
+                await InitializePackSelectorsAsync();
+            });
+        }
+
+        private async Task InitializePackSelectorsAsync()
+        {
+            await PopulateVoicePackSelectorAsync();
+            await PopulateIconPackSelectorAsync();
+            LoadIconPackSetting();
+            LoadEliteEffectSetting();
+            LoadWeaponBadgeSetting();
+            LoadMainAnimationStyleSetting();
+            LoadVoicePackSetting();
+        }
+
+        private async Task PopulateVoicePackSelectorAsync()
+        {
+            string preferredPreset = ApplicationData.Current.LocalSettings.Values[VoicePackSettingKey] as string;
+            if (string.IsNullOrWhiteSpace(preferredPreset))
+            {
+                preferredPreset = "crossfire_swat_gr";
+            }
+
+            var visiblePacks = await PackCatalogService.GetVisibleVoicePacksAsync();
+            VoicePackSelector.Items.Clear();
+            foreach (VoicePackItem pack in visiblePacks)
+            {
+                VoicePackSelector.Items.Add(new ComboBoxItem
+                {
+                    Content = PackCatalogService.GetVoicePackDisplayName(pack),
+                    Tag = pack.Key
+                });
+            }
+
+            if (VoicePackSelector.Items.Count == 0)
+            {
+                VoicePackSelector.Items.Add(new ComboBoxItem
+                {
+                    Content = "swat GR",
+                    Tag = "crossfire_swat_gr"
+                });
+            }
+
+            SelectVoicePackPreset(preferredPreset);
+        }
+
+        private async Task PopulateIconPackSelectorAsync()
+        {
+            string preferredIconPack = ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] as string;
+            if (string.IsNullOrWhiteSpace(preferredIconPack))
+            {
+                preferredIconPack = "default";
+            }
+
+            var visiblePacks = await PackCatalogService.GetVisibleIconPacksAsync();
+            IconPackSelector.Items.Clear();
+            foreach (IconPackItem pack in visiblePacks)
+            {
+                IconPackSelector.Items.Add(new ComboBoxItem
+                {
+                    Content = pack.DisplayName,
+                    Tag = pack.Key,
+                    Foreground = new SolidColorBrush(Colors.White)
+                });
+            }
+
+            if (IconPackSelector.Items.Count == 0)
+            {
+                IconPackSelector.Items.Add(new ComboBoxItem
+                {
+                    Content = "原版",
+                    Tag = "default",
+                    Foreground = new SolidColorBrush(Colors.White)
+                });
+            }
+
+            SelectIconPack(preferredIconPack);
+        }
+
         private void OnKillReceived(object sender, KillEvent e)
         {
             HandleKillEvent(e);
@@ -253,7 +339,7 @@ namespace TestXboxGameBar
         private async void OnCenterClick(object sender, RoutedEventArgs e)
         {
             _animationOffset = 0;
-            _animationPlacement = AnimationPlacementMode.Center;
+            _animationPlacement = AnimationPlacementMode.Bottom;
             ApplyAnimationOffset();
             SaveAnimationPlacementSettings();
 
@@ -318,7 +404,9 @@ namespace TestXboxGameBar
         {
             try
             {
-                if (await App.TryShowGuideWindowAsync())
+                bool launched = await TryLaunchFullTrustHelperAsync(OpenSettingsWindowParameterGroupId);
+                App.Log("Open settings: external launcher result=" + launched);
+                if (launched)
                 {
                     return;
                 }
@@ -326,8 +414,9 @@ namespace TestXboxGameBar
             catch (Exception ex)
             {
                 App.Log("Failed to open guide: " + ex);
-                ShowGuideOpenFailedHint();
             }
+
+            ShowGuideOpenFailedHint();
         }
 
         private void ShowGuideOpenFailedHint()
@@ -690,6 +779,10 @@ namespace TestXboxGameBar
         {
             RefreshStatusHint(true);
             LoadLanguageSelector();
+            if (_isPageActive)
+            {
+                _ = InitializePackSelectorsAsync();
+            }
             ToolTipService.SetToolTip(LanguageToggleButton, "Language / \u8BED\u8A00");
 
             ToolTipService.SetToolTip(OpenGuideButton, LocalizationManager.Text("OpenGuideTooltip"));
@@ -1189,6 +1282,15 @@ namespace TestXboxGameBar
             Controls.KillConfirmAnimation.ConfigureIconPack(iconPack);
             UpdateEliteEffectSelectorState();
             UpdateWeaponBadgeSelectorState();
+
+            if (_isPageActive && string.Equals(iconPack, "legacy", StringComparison.OrdinalIgnoreCase))
+            {
+                _ = WarmStartupAnimationCacheAsync();
+            }
+            else
+            {
+                UpdateAnimationCacheReady();
+            }
         }
 
         private void OnEliteEffectSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1532,9 +1634,22 @@ namespace TestXboxGameBar
 
             try
             {
+                VoicePackItem selectedPack = await PackCatalogService.GetVoicePackAsync(preset);
+                var request = new JsonObject
+                {
+                    ["preset"] = JsonValue.CreateStringValue(preset)
+                };
+                if (selectedPack != null
+                    && !selectedPack.IsBuiltIn
+                    && !string.IsNullOrWhiteSpace(selectedPack.FolderPath))
+                {
+                    request["custom_path"] = JsonValue.CreateStringValue(selectedPack.FolderPath);
+                    request["display_name"] = JsonValue.CreateStringValue(selectedPack.DisplayName ?? preset);
+                }
+
                 using (var client = new HttpClient())
                 using (var content = new HttpStringContent(
-                    "{\"preset\":\"" + preset + "\"}",
+                    request.Stringify(),
                     UnicodeEncoding.Utf8,
                     "application/json"))
                 using (HttpResponseMessage response = await client.PostAsync(SoundPackUri, content))
@@ -1564,7 +1679,7 @@ namespace TestXboxGameBar
                 return tag;
             }
 
-            return "crossfire";
+            return "crossfire_swat_gr";
         }
 
         private void SelectVoicePackPreset(string preset)
@@ -1610,7 +1725,12 @@ namespace TestXboxGameBar
         {
             if (string.IsNullOrWhiteSpace(preset))
             {
-                return "crossfire";
+                return "crossfire_swat_gr";
+            }
+
+            if (PackCatalogService.IsImportedVoicePackKey(preset))
+            {
+                return preset;
             }
 
             switch (preset.Trim().ToLowerInvariant())
@@ -2472,7 +2592,15 @@ namespace TestXboxGameBar
 
             if (_isPageActive)
             {
-                _ = WarmStartupAnimationCacheAsync();
+                string iconPack = GetSelectedIconPack();
+                if (string.Equals(iconPack, "legacy", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ = WarmStartupAnimationCacheAsync();
+                }
+                else
+                {
+                    UpdateAnimationCacheReady();
+                }
             }
         }
 

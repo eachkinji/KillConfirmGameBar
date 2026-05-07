@@ -33,6 +33,10 @@ pub struct Args {
     /// open the package runtime log folder, then exit
     #[arg(long, default_value = "false")]
     pub open_logs: bool,
+
+    /// launch the packaged external settings helper, then exit
+    #[arg(long, default_value = "false")]
+    pub open_settings_launcher: bool,
 }
 
 impl Args {

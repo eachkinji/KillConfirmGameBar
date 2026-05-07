@@ -15,6 +15,7 @@ pub struct SoundContext {
     pub preset_name: String,
     pub master_name: String,
     pub variant: Option<String>,
+    pub base_dir: String,
 }
 
 /// Holds a compiled Lua script for a soundpack
