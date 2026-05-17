@@ -54,6 +54,10 @@ namespace TestXboxGameBar.Controls
         private static int _eliteEffectLevel;
         private static bool _weaponBadgeEnabled;
         private static int _mainAnimationStyle = 1;
+        private static bool _customPackHasKillFx;
+        private static bool _customPackHasEliteOverlay;
+        private static bool _customPackHasWeaponBadgeOverlay;
+        private static bool _killFxEnabled = true; // default ON
 
         private static readonly Dictionary<string, SpriteMetadata> MetadataCache = new Dictionary<string, SpriteMetadata>();
         private static readonly Dictionary<string, IReadOnlyList<SpriteSheetSegment>> SheetCache = new Dictionary<string, IReadOnlyList<SpriteSheetSegment>>();
@@ -241,6 +245,36 @@ namespace TestXboxGameBar.Controls
 
             _mainAnimationStyle = normalized;
         }
+
+        public static void ConfigureCustomPackOverlayCapabilities(
+            bool hasKillFxOverlay,
+            bool hasEliteOverlay,
+            bool hasWeaponBadgeOverlay)
+        {
+            if (_customPackHasKillFx == hasKillFxOverlay
+                && _customPackHasEliteOverlay == hasEliteOverlay
+                && _customPackHasWeaponBadgeOverlay == hasWeaponBadgeOverlay)
+            {
+                return;
+            }
+
+            _customPackHasKillFx = hasKillFxOverlay;
+            _customPackHasEliteOverlay = hasEliteOverlay;
+            _customPackHasWeaponBadgeOverlay = hasWeaponBadgeOverlay;
+            CodeKillCache.Clear();
+        }
+
+        public static bool GetCustomPackHasKillFx() => _customPackHasKillFx;
+        public static bool GetCustomPackHasEliteOverlay() => _customPackHasEliteOverlay;
+        public static bool GetCustomPackHasWeaponBadgeOverlay() => _customPackHasWeaponBadgeOverlay;
+
+        public static void ConfigureKillFxEnabled(bool enabled)
+        {
+            if (_killFxEnabled == enabled) return;
+            _killFxEnabled = enabled;
+            CodeKillCache.Clear();
+        }
+
 
         private async void PlayInternal(Func<IProgress<int>, Task<AnimationAsset>> assetLoader)
         {
@@ -529,11 +563,16 @@ namespace TestXboxGameBar.Controls
             if (!CodeKillCache.TryGetValue(cacheKey, out Code2KillAsset asset))
             {
                 string effectiveMainFileName = GetEffectiveMainFileName(normalizedAssetName, mainFileName);
-                CanvasBitmap main = await LoadCodeKillBitmapAsync(effectiveMainFileName, mainFolder, alternatePackFolder, true);
+                CanvasBitmap main = await LoadMainCodeKillBitmapAsync(
+                    normalizedAssetName,
+                    mainFileName,
+                    effectiveMainFileName,
+                    mainFolder,
+                    alternatePackFolder);
                 progress?.Report(50);
                 CanvasBitmap fx = string.IsNullOrWhiteSpace(fxFileName) || !SupportsKillFxOverlay()
                     ? null
-                    : await LoadCodeKillBitmapAsync(fxFileName, fxFolder, null, false);
+                    : await LoadOptionalOverlayBitmapAsync(fxFileName, fxFolder);
                 CanvasBitmap eliteOverlay = await LoadEliteOverlayBitmapAsync(normalizedAssetName);
                 CanvasBitmap weaponBadgeOverlay = await LoadWeaponBadgeOverlayBitmapAsync(normalizedAssetName, normalizedWeaponBadgeKey);
                 asset = new Code2KillAsset(main, fx, eliteOverlay, weaponBadgeOverlay);
@@ -724,9 +763,42 @@ namespace TestXboxGameBar.Controls
             }
         }
 
+        private static async Task<CanvasBitmap> LoadMainCodeKillBitmapAsync(
+            string assetName,
+            string defaultMainFileName,
+            string effectiveMainFileName,
+            string mainFolder,
+            string alternatePackFolder)
+        {
+            if (PackCatalogService.IsImportedIconPackKey(_iconPack)
+                && string.Equals(assetName, "knife", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(defaultMainFileName, effectiveMainFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                CanvasBitmap importedEliteKnife = await TryLoadImportedIconBitmapAsync(effectiveMainFileName);
+                if (importedEliteKnife != null)
+                {
+                    return importedEliteKnife;
+                }
+
+                return await LoadCodeKillBitmapAsync(defaultMainFileName, mainFolder, alternatePackFolder, true);
+            }
+
+            return await LoadCodeKillBitmapAsync(effectiveMainFileName, mainFolder, alternatePackFolder, true);
+        }
+
+        private static async Task<CanvasBitmap> LoadOptionalOverlayBitmapAsync(string fileName, string folder)
+        {
+            if (PackCatalogService.IsImportedIconPackKey(_iconPack))
+            {
+                return await TryLoadImportedIconBitmapAsync(fileName);
+            }
+
+            return await LoadCodeKillBitmapAsync(fileName, folder, null, false);
+        }
+
         private static async Task<CanvasBitmap> LoadEliteOverlayBitmapAsync(string assetName)
         {
-            if (_eliteEffectLevel <= 0 || !SupportsEliteOrWeaponBadges())
+            if (_eliteEffectLevel <= 0 || !SupportsEliteOverlay())
             {
                 return null;
             }
@@ -737,13 +809,13 @@ namespace TestXboxGameBar.Controls
             }
 
             string fileName = $"KillMark_Upgrade{_eliteEffectLevel}.png";
-            return await LoadCodeKillBitmapAsync(fileName, EliteUpgradeCodeFolder, null, false);
+            return await LoadOptionalOverlayBitmapAsync(fileName, EliteUpgradeCodeFolder);
         }
 
         private static async Task<CanvasBitmap> LoadWeaponBadgeOverlayBitmapAsync(string assetName, string weaponBadgeKey)
         {
             if (!_weaponBadgeEnabled
-                || !SupportsEliteOrWeaponBadges()
+                || !SupportsWeaponBadgeOverlay()
                 || !SupportsWeaponBadgeForAsset(assetName)
                 || string.IsNullOrWhiteSpace(weaponBadgeKey))
             {
@@ -773,7 +845,7 @@ namespace TestXboxGameBar.Controls
                     return null;
             }
 
-            return await LoadCodeKillBitmapAsync(fileName, WeaponBadgeCodeFolder, null, false);
+            return await LoadOptionalOverlayBitmapAsync(fileName, WeaponBadgeCodeFolder);
         }
 
         private static bool SupportsWeaponBadgeForAsset(string assetName)
@@ -784,7 +856,7 @@ namespace TestXboxGameBar.Controls
         private static string GetEffectiveMainFileName(string assetName, string defaultMainFileName)
         {
             if (string.Equals(assetName, "knife", StringComparison.OrdinalIgnoreCase)
-                && SupportsEliteOrWeaponBadges()
+                && SupportsEliteOverlay()
                 && _eliteEffectLevel > 0)
             {
                 return $"badge_knife_{Math.Min(3, _eliteEffectLevel)}.png";
@@ -806,16 +878,26 @@ namespace TestXboxGameBar.Controls
             }
         }
 
-        private static bool SupportsEliteOrWeaponBadges()
+        private static bool SupportsEliteOverlay()
         {
             return string.Equals(_iconPack, "default", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(_iconPack, "vip", StringComparison.OrdinalIgnoreCase);
+                || string.Equals(_iconPack, "vip", StringComparison.OrdinalIgnoreCase)
+                || (PackCatalogService.IsImportedIconPackKey(_iconPack) && _customPackHasEliteOverlay);
+        }
+
+        private static bool SupportsWeaponBadgeOverlay()
+        {
+            return string.Equals(_iconPack, "default", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_iconPack, "vip", StringComparison.OrdinalIgnoreCase)
+                || (PackCatalogService.IsImportedIconPackKey(_iconPack) && _customPackHasWeaponBadgeOverlay);
         }
 
         private static bool SupportsKillFxOverlay()
         {
+            if (!_killFxEnabled) return false;
             return string.Equals(_iconPack, "default", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(_iconPack, "vip", StringComparison.OrdinalIgnoreCase);
+                || string.Equals(_iconPack, "vip", StringComparison.OrdinalIgnoreCase)
+                || (PackCatalogService.IsImportedIconPackKey(_iconPack) && _customPackHasKillFx);
         }
 
         private static string GetWeaponBadgeVariantSuffix()

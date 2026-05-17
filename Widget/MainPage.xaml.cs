@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using TestXboxGameBar.Services;
@@ -12,12 +14,67 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
+using TestXboxGameBar.Helpers;
 
 namespace TestXboxGameBar
 {
     public sealed partial class MainPage : Page
     {
         private readonly MediaPlayer _previewPlayer = new MediaPlayer();
+        private static readonly string[] VoicePackImportFiles =
+        {
+            "common.wav",
+            "2.wav",
+            "3.wav",
+            "4.wav",
+            "5.wav",
+            "6.wav",
+            "7.wav",
+            "8.wav",
+            "headshot.wav",
+            "knife.wav",
+            "firstandlast.wav"
+        };
+        private static readonly string[] IconPackImportFiles =
+        {
+            "badge_multi1.png",
+            "badge_multi2.png",
+            "badge_multi3.png",
+            "badge_multi4.png",
+            "badge_multi5.png",
+            "badge_multi6.png",
+            "badge_headshot.png",
+            "badge_headshot_gold.png",
+            "badge_knife.png",
+            "FIRSTKILL.png",
+            "LASTKILL.png",
+            "KillMark_Upgrade1.png",
+            "KillMark_Upgrade2.png",
+            "KillMark_Upgrade3.png",
+            "multi2_fx.png",
+            "multi3_fx.png",
+            "multi4_fx.png",
+            "multi5_fx.png",
+            "multi6_fx.png",
+            "badge_knife_1.png",
+            "badge_knife_2.png",
+            "badge_knife_3.png",
+            "badge_assault1.png",
+            "badge_assault2.png",
+            "badge_assault3.png",
+            "badge_scout1.png",
+            "badge_scout2.png",
+            "badge_scout3.png",
+            "badge_sniper1.png",
+            "badge_sniper2.png",
+            "badge_sniper3.png",
+            "badge_elite1.png",
+            "badge_elite2.png",
+            "badge_elite3.png",
+            "badge_knife1.png",
+            "badge_knife2.png",
+            "badge_knife3.png"
+        };
 
         public MainPage()
         {
@@ -57,9 +114,7 @@ namespace TestXboxGameBar
         private async Task RebuildVoicePackListAsync()
         {
             var items = await PackCatalogService.GetAllVoicePacksAsync();
-            VoiceVisibleCountText.Text = LocalizationManager.Current == UiLanguage.SimplifiedChinese
-                ? $"Game Bar 里显示 {CountVisible(items)} 个语音包"
-                : $"{CountVisible(items)} voice packs visible in Game Bar";
+            VoiceVisibleCountText.Text = string.Format(LocalizationManager.Text("VisibleCount"), CountVisible(items));
 
             VoicePackListPanel.Children.Clear();
             foreach (VoicePackItem item in items)
@@ -71,9 +126,7 @@ namespace TestXboxGameBar
         private async Task RebuildIconPackListAsync()
         {
             var items = await PackCatalogService.GetAllIconPacksAsync();
-            IconVisibleCountText.Text = LocalizationManager.Current == UiLanguage.SimplifiedChinese
-                ? $"Game Bar 里显示 {CountVisible(items)} 个图标包"
-                : $"{CountVisible(items)} icon packs visible in Game Bar";
+            IconVisibleCountText.Text = string.Format(LocalizationManager.Text("VisibleCount"), CountVisible(items));
 
             IconPackListPanel.Children.Clear();
             foreach (IconPackItem item in items)
@@ -110,57 +163,77 @@ namespace TestXboxGameBar
             };
             checkBox.Checked += async (_, __) => await PackCatalogService.SetVoicePackVisibilityAsync(item.Key, true);
             checkBox.Unchecked += async (_, __) => await PackCatalogService.SetVoicePackVisibilityAsync(item.Key, false);
-
             var title = new TextBlock
             {
                 Text = PackCatalogService.GetVoicePackDisplayName(item),
-                Foreground = new SolidColorBrush(Color.FromArgb(255, 247, 251, 255)),
-                FontSize = 14
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255)),
+                FontSize = 14,
+                FontWeight = Windows.UI.Text.FontWeights.SemiBold
             };
-
             var meta = new TextBlock
             {
-                Text = item.IsBuiltIn
-                    ? (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "内置" : "Built-in")
-                    : (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "自定义" : "Custom"),
-                Foreground = new SolidColorBrush(Color.FromArgb(255, 142, 164, 184)),
+                Text = item.IsBuiltIn ? LocalizationManager.Text("BuiltIn") : LocalizationManager.Text("Custom"),
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 170, 170, 170)),
                 FontSize = 12
             };
-
+            var editButton = new Button
+            {
+                Content = LocalizationManager.Text("Edit"),
+                Padding = new Thickness(12, 6, 12, 6),
+                Background = new SolidColorBrush(Color.FromArgb(255, 42, 42, 42)),
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 100, 180, 255)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 68, 68, 68)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Margin = new Thickness(0, 0, 6, 0),
+                Visibility = item.IsBuiltIn ? Visibility.Collapsed : Visibility.Visible
+            };
+            editButton.Click += async (_, __) =>
+            {
+                var existingFiles = await CollectRecognizedFilesFromFolderAsync(
+                    item.FolderPath,
+                    "common.wav", "2.wav", "3.wav", "4.wav", "5.wav",
+                    "6.wav", "7.wav", "8.wav", "headshot.wav", "knife.wav", "firstandlast.wav");
+                await ShowCreateVoicePackDialogAsync(item.DisplayName, existingFiles);
+            };
             var deleteButton = new Button
             {
-                Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "删除" : "Delete",
-                Padding = new Thickness(10, 4, 10, 4),
+                Content = LocalizationManager.Text("Delete"),
+                Padding = new Thickness(12, 6, 12, 6),
+                Background = new SolidColorBrush(Color.FromArgb(255, 42, 42, 42)),
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 77, 79)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 68, 68, 68)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
                 Visibility = item.IsBuiltIn ? Visibility.Collapsed : Visibility.Visible
             };
             deleteButton.Click += async (_, __) => await PackCatalogService.RemoveCustomVoicePackAsync(item.Key);
-
             var content = new StackPanel { Spacing = 2 };
             content.Children.Add(title);
             content.Children.Add(meta);
-
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
+            buttonPanel.Children.Add(editButton);
+            buttonPanel.Children.Add(deleteButton);
             var row = new Grid { ColumnSpacing = 10 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
             row.Children.Add(checkBox);
             Grid.SetColumn(content, 1);
             row.Children.Add(content);
-            Grid.SetColumn(deleteButton, 2);
-            row.Children.Add(deleteButton);
-
+            Grid.SetColumn(buttonPanel, 2);
+            row.Children.Add(buttonPanel);
             return new Border
             {
-                Padding = new Thickness(10),
-                Background = new SolidColorBrush(Color.FromArgb(255, 23, 36, 50)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 55, 80, 102)),
+                Padding = new Thickness(14),
+                Background = new SolidColorBrush(Color.FromArgb(255, 30, 30, 30)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 51, 51, 51)),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(12),
+                Margin = new Thickness(0, 0, 0, 4),
                 Child = row
             };
         }
-
         private UIElement BuildIconPackRow(IconPackItem item)
         {
             var checkBox = new CheckBox
@@ -170,57 +243,87 @@ namespace TestXboxGameBar
             };
             checkBox.Checked += async (_, __) => await PackCatalogService.SetIconPackVisibilityAsync(item.Key, true);
             checkBox.Unchecked += async (_, __) => await PackCatalogService.SetIconPackVisibilityAsync(item.Key, false);
-
             var title = new TextBlock
             {
-                Text = item.DisplayName,
-                Foreground = new SolidColorBrush(Color.FromArgb(255, 247, 251, 255)),
-                FontSize = 14
+                Text = PackCatalogService.GetIconPackDisplayName(item),
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255)),
+                FontSize = 14,
+                FontWeight = Windows.UI.Text.FontWeights.SemiBold
             };
-
             var meta = new TextBlock
             {
-                Text = item.IsBuiltIn
-                    ? (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "内置" : "Built-in")
-                    : (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "自定义" : "Custom"),
-                Foreground = new SolidColorBrush(Color.FromArgb(255, 142, 164, 184)),
+                Text = item.IsBuiltIn ? LocalizationManager.Text("BuiltIn") : LocalizationManager.Text("Custom"),
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 170, 170, 170)),
                 FontSize = 12
             };
-
+            var editButton = new Button
+            {
+                Content = LocalizationManager.Text("Edit"),
+                Padding = new Thickness(12, 6, 12, 6),
+                Background = new SolidColorBrush(Color.FromArgb(255, 42, 42, 42)),
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 100, 180, 255)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 68, 68, 68)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Margin = new Thickness(0, 0, 6, 0),
+                Visibility = item.IsBuiltIn ? Visibility.Collapsed : Visibility.Visible
+            };
+            editButton.Click += async (_, __) =>
+            {
+                var existingFiles = await CollectRecognizedFilesFromFolderAsync(
+                    item.FolderPath,
+                    "badge_multi1.png", "badge_multi2.png", "badge_multi3.png",
+                    "badge_multi4.png", "badge_multi5.png", "badge_multi6.png",
+                    "badge_headshot.png", "badge_headshot_gold.png", "badge_knife.png",
+                    "FIRSTKILL.png", "LASTKILL.png",
+                    "KillMark_Upgrade1.png", "KillMark_Upgrade2.png", "KillMark_Upgrade3.png",
+                    "multi2_fx.png", "multi3_fx.png", "multi4_fx.png", "multi5_fx.png", "multi6_fx.png",
+                    "badge_knife_1.png", "badge_knife_2.png", "badge_knife_3.png",
+                    "badge_assault1.png", "badge_assault2.png", "badge_assault3.png",
+                    "badge_scout1.png", "badge_scout2.png", "badge_scout3.png",
+                    "badge_sniper1.png", "badge_sniper2.png", "badge_sniper3.png",
+                    "badge_elite1.png", "badge_elite2.png", "badge_elite3.png",
+                    "badge_knife1.png", "badge_knife2.png", "badge_knife3.png");
+                await ShowCreateIconPackDialogAsync(item.DisplayName, existingFiles);
+            };
             var deleteButton = new Button
             {
-                Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "删除" : "Delete",
-                Padding = new Thickness(10, 4, 10, 4),
+                Content = LocalizationManager.Text("Delete"),
+                Padding = new Thickness(12, 6, 12, 6),
+                Background = new SolidColorBrush(Color.FromArgb(255, 42, 42, 42)),
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 77, 79)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 68, 68, 68)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
                 Visibility = item.IsBuiltIn ? Visibility.Collapsed : Visibility.Visible
             };
             deleteButton.Click += async (_, __) => await PackCatalogService.RemoveCustomIconPackAsync(item.Key);
-
             var content = new StackPanel { Spacing = 2 };
             content.Children.Add(title);
             content.Children.Add(meta);
-
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
+            buttonPanel.Children.Add(editButton);
+            buttonPanel.Children.Add(deleteButton);
             var row = new Grid { ColumnSpacing = 10 };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
             row.Children.Add(checkBox);
             Grid.SetColumn(content, 1);
             row.Children.Add(content);
-            Grid.SetColumn(deleteButton, 2);
-            row.Children.Add(deleteButton);
-
+            Grid.SetColumn(buttonPanel, 2);
+            row.Children.Add(buttonPanel);
             return new Border
             {
-                Padding = new Thickness(10),
-                Background = new SolidColorBrush(Color.FromArgb(255, 23, 36, 50)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 55, 80, 102)),
+                Padding = new Thickness(14),
+                Background = new SolidColorBrush(Color.FromArgb(255, 30, 30, 30)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 51, 51, 51)),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(12),
+                Margin = new Thickness(0, 0, 0, 4),
                 Child = row
             };
         }
-
         private async void OnImportVoicePackClick(object sender, RoutedEventArgs e)
         {
             var picker = new FolderPicker();
@@ -233,20 +336,21 @@ namespace TestXboxGameBar
 
             await ShowCreateVoicePackDialogAsync(
                 folder.DisplayName,
-                await CollectRecognizedFilesAsync(
-                    folder,
-                    "common.wav",
-                    "2.wav",
-                    "3.wav",
-                    "4.wav",
-                    "5.wav",
-                    "6.wav",
-                    "7.wav",
-                    "8.wav",
-                    "headshot.wav",
-                    "knife.wav",
-                    "firstandlast.wav"),
+                await CollectRecognizedFilesAsync(folder, VoicePackImportFiles),
                 await TryGetFileAsync(folder, "common_overlay.wav"));
+        }
+
+        private async void OnImportVoiceZipClick(object sender, RoutedEventArgs e)
+        {
+            await ImportPackFromZipAsync(
+                VoicePackImportFiles,
+                async (folder, files) =>
+                {
+                    await ShowCreateVoicePackDialogAsync(
+                        folder.DisplayName,
+                        files,
+                        await TryGetFileAsync(folder, "common_overlay.wav"));
+                });
         }
 
         private async void OnImportIconPackClick(object sender, RoutedEventArgs e)
@@ -261,19 +365,17 @@ namespace TestXboxGameBar
 
             await ShowCreateIconPackDialogAsync(
                 folder.DisplayName,
-                await CollectRecognizedFilesAsync(
-                    folder,
-                    "badge_multi1.png",
-                    "badge_multi2.png",
-                    "badge_multi3.png",
-                    "badge_multi4.png",
-                    "badge_multi5.png",
-                    "badge_multi6.png",
-                    "badge_headshot.png",
-                    "badge_headshot_gold.png",
-                    "badge_knife.png",
-                    "FIRSTKILL.png",
-                    "LASTKILL.png"));
+                await CollectRecognizedFilesAsync(folder, IconPackImportFiles));
+        }
+
+        private async void OnImportIconZipClick(object sender, RoutedEventArgs e)
+        {
+            await ImportPackFromZipAsync(
+                IconPackImportFiles,
+                async (folder, files) =>
+                {
+                    await ShowCreateIconPackDialogAsync(folder.DisplayName, files);
+                });
         }
 
         private async void OnCreateVoicePackClick(object sender, RoutedEventArgs e)
@@ -286,6 +388,53 @@ namespace TestXboxGameBar
             await ShowCreateIconPackDialogAsync();
         }
 
+        private async Task ImportPackFromZipAsync(
+            IReadOnlyList<string> recognizedFileNames,
+            Func<StorageFolder, IReadOnlyDictionary<string, StorageFile>, Task> showDialogAsync)
+        {
+            StorageFile zipFile = await PickSingleFileAsync(new[] { ".zip" });
+            if (zipFile == null)
+            {
+                return;
+            }
+
+            StorageFolder extractedFolder = null;
+            try
+            {
+                extractedFolder = await ExtractZipToTemporaryFolderAsync(zipFile);
+                StorageFolder bestFolder = await FindBestPackFolderAsync(extractedFolder, recognizedFileNames);
+                IReadOnlyDictionary<string, StorageFile> files = await CollectRecognizedFilesAsync(bestFolder, recognizedFileNames.ToArray());
+                if (files.Count == 0)
+                {
+                    await ShowMessageAsync(
+                        LocalizationManager.Text("ZipImportFailedTitle"),
+                        LocalizationManager.Text("ZipImportNoFilesMessage"));
+                    return;
+                }
+
+                await showDialogAsync(bestFolder, files);
+            }
+            catch
+            {
+                await ShowMessageAsync(
+                    LocalizationManager.Text("ZipImportFailedTitle"),
+                    LocalizationManager.Text("ZipImportFailedMessage"));
+            }
+            finally
+            {
+                if (extractedFolder != null)
+                {
+                    try
+                    {
+                        await extractedFolder.DeleteAsync(StorageDeleteOption.PermanentDelete);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+
         private async Task ShowCreateVoicePackDialogAsync(
             string initialDisplayName = null,
             IReadOnlyDictionary<string, StorageFile> initialFiles = null,
@@ -293,17 +442,17 @@ namespace TestXboxGameBar
         {
             var slots = new[]
             {
-                ("common.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "一杀音效" : "Single kill"),
-                ("2.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "双杀" : "Double kill"),
-                ("3.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "三杀" : "Triple kill"),
-                ("4.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "四杀" : "4 kills"),
-                ("5.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "五杀" : "5 kills"),
-                ("6.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "六杀" : "6 kills"),
-                ("7.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "七杀" : "7 kills"),
-                ("8.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "八杀" : "8 kills"),
-                ("headshot.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "爆头" : "Headshot"),
-                ("knife.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "刀杀" : "Knife kill"),
-                ("firstandlast.wav", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "首杀/尾杀" : "First / Last kill")
+                ("common.wav", LocalizationManager.Text("SingleKill")),
+                ("2.wav", LocalizationManager.Text("DoubleKill")),
+                ("3.wav", LocalizationManager.Text("TripleKill")),
+                ("4.wav", LocalizationManager.Text("QuadraKill")),
+                ("5.wav", LocalizationManager.Text("PentaKill")),
+                ("6.wav", LocalizationManager.Text("HexaKill")),
+                ("7.wav", LocalizationManager.Text("HeptaKill")),
+                ("8.wav", LocalizationManager.Text("OctaKill")),
+                ("headshot.wav", LocalizationManager.Text("Headshot")),
+                ("knife.wav", LocalizationManager.Text("KnifeKill")),
+                ("firstandlast.wav", LocalizationManager.Text("FirstLastKill"))
             };
 
             var selectedFiles = initialFiles != null
@@ -316,16 +465,14 @@ namespace TestXboxGameBar
 
             var nameBox = new TextBox
             {
-                PlaceholderText = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "输入语音包名称" : "Voice pack name",
+                PlaceholderText = LocalizationManager.Text("VoicePackNamePlaceholder"),
                 Text = initialDisplayName ?? string.Empty
             };
 
             var layout = new StackPanel { Spacing = 10 };
             layout.Children.Add(new TextBlock
             {
-                Text = LocalizationManager.Current == UiLanguage.SimplifiedChinese
-                    ? "一杀音效和通用击杀音效分开设置。每个项目都可以决定是否叠加通用击杀音效。"
-                    : "Single-kill and shared kill sounds are configured separately. Each slot can decide whether to layer the shared kill sound.",
+                Text = LocalizationManager.Text("VoicePackCreationHint"),
                 TextWrapping = TextWrapping.WrapWholeWords
             });
             layout.Children.Add(nameBox);
@@ -333,19 +480,19 @@ namespace TestXboxGameBar
             var commonOverlayCard = new StackPanel { Spacing = 6 };
             commonOverlayCard.Children.Add(new TextBlock
             {
-                Text = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "通用击杀音效" : "Shared kill sound",
+                Text = LocalizationManager.Text("OneKillSound"),
                 Foreground = new SolidColorBrush(Color.FromArgb(255, 247, 251, 255))
             });
 
             var commonOverlayMode = new ComboBox { MinWidth = 180 };
             commonOverlayMode.Items.Add(new ComboBoxItem
             {
-                Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "使用默认 common" : "Use built-in common",
+                Content = LocalizationManager.Text("UseBuiltInCommon"),
                 Tag = "builtin"
             });
             commonOverlayMode.Items.Add(new ComboBoxItem
             {
-                Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "选择自己的音频" : "Choose custom audio",
+                Content = LocalizationManager.Text("ChooseCustomAudio"),
                 Tag = "custom"
             });
             commonOverlayMode.SelectedIndex = useBuiltInCommonOverlay ? 0 : 1;
@@ -359,7 +506,7 @@ namespace TestXboxGameBar
             var commonOverlayFileText = new TextBlock
             {
                 Text = customCommonOverlayFile?.Name
-                    ?? (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "默认 common" : "Built-in common"),
+                    ?? LocalizationManager.Text("UseBuiltInCommon"),
                 FontSize = 12,
                 Foreground = new SolidColorBrush(Color.FromArgb(255, 142, 164, 184)),
                 TextWrapping = TextWrapping.WrapWholeWords,
@@ -386,7 +533,7 @@ namespace TestXboxGameBar
 
             var commonOverlayBrowseButton = new Button
             {
-                Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "选择文件" : "Choose File",
+                Content = LocalizationManager.Text("ChooseFile"),
                 Padding = new Thickness(10, 4, 10, 4),
                 IsEnabled = !useBuiltInCommonOverlay
             };
@@ -416,11 +563,11 @@ namespace TestXboxGameBar
                 if (isCustom)
                 {
                     commonOverlayFileText.Text = customCommonOverlayFile?.Name
-                        ?? (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "未选择" : "Not selected");
+                        ?? LocalizationManager.Text("NotSelected");
                 }
                 else
                 {
-                    commonOverlayFileText.Text = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "默认 common" : "Built-in common";
+                    commonOverlayFileText.Text = LocalizationManager.Text("UseBuiltInCommon");
                 }
             };
 
@@ -433,7 +580,7 @@ namespace TestXboxGameBar
             };
             var overlayOnButton = new Button
             {
-                Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "通用叠加全开" : "Enable all overlay",
+                Content = LocalizationManager.Text("EnableAllOverlay"),
                 Padding = new Thickness(10, 4, 10, 4)
             };
             overlayOnButton.Click += (_, __) =>
@@ -445,7 +592,7 @@ namespace TestXboxGameBar
             };
             var overlayOffButton = new Button
             {
-                Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "通用叠加全关" : "Disable all overlay",
+                Content = LocalizationManager.Text("DisableAllOverlay"),
                 Padding = new Thickness(10, 4, 10, 4)
             };
             overlayOffButton.Click += (_, __) =>
@@ -484,7 +631,7 @@ namespace TestXboxGameBar
 
                 var fileText = new TextBlock
                 {
-                    Text = existingFile?.Name ?? (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "未选择" : "Not selected"),
+                    Text = existingFile?.Name ?? LocalizationManager.Text("NotSelected"),
                     FontSize = 12,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 142, 164, 184)),
                     TextWrapping = TextWrapping.WrapWholeWords,
@@ -495,7 +642,7 @@ namespace TestXboxGameBar
 
                 var overlayCheckBox = new CheckBox
                 {
-                    Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "叠加通用" : "Layer common",
+                    Content = LocalizationManager.Text("LayerCommon"),
                     IsChecked = true,
                     VerticalAlignment = VerticalAlignment.Center
                 };
@@ -523,7 +670,7 @@ namespace TestXboxGameBar
 
                 var browseButton = new Button
                 {
-                    Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "选择文件" : "Choose File",
+                    Content = LocalizationManager.Text("ChooseFile"),
                     Padding = new Thickness(10, 4, 10, 4)
                 };
                 browseButton.Click += async (_, __) =>
@@ -547,10 +694,10 @@ namespace TestXboxGameBar
 
             var dialog = new ContentDialog
             {
-                Title = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "图形化新建语音包" : "Create Voice Pack",
+                Title = LocalizationManager.Text("CreateVoicePack"),
                 Content = layout,
-                PrimaryButtonText = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "创建" : "Create",
-                CloseButtonText = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "取消" : "Cancel"
+                PrimaryButtonText = LocalizationManager.Text("Create"),
+                CloseButtonText = LocalizationManager.Text("Cancel")
             };
 
             ContentDialogResult result = await dialog.ShowAsync();
@@ -560,7 +707,7 @@ namespace TestXboxGameBar
             }
 
             string displayName = string.IsNullOrWhiteSpace(nameBox.Text)
-                ? (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "新建语音包" : "New Voice Pack")
+                ? LocalizationManager.Text("NewPack")
                 : nameBox.Text.Trim();
 
             await PackCatalogService.CreateVoicePackAsync(
@@ -579,26 +726,50 @@ namespace TestXboxGameBar
         {
             var slots = new[]
             {
-                ("badge_multi1.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "单杀" : "Single kill"),
-                ("badge_multi2.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "双杀" : "Double kill"),
-                ("badge_multi3.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "三杀" : "Triple kill"),
-                ("badge_multi4.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "四杀" : "4 kills"),
-                ("badge_multi5.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "五杀" : "5 kills"),
-                ("badge_multi6.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "六杀" : "6 kills"),
-                ("badge_headshot.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "爆头" : "Headshot"),
-                ("badge_headshot_gold.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "首尾爆头" : "Gold headshot"),
-                ("badge_knife.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "刀杀" : "Knife kill"),
-                ("FIRSTKILL.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "首杀牌" : "First kill plate"),
-                ("LASTKILL.png", LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "尾杀牌" : "Last kill plate")
+                ("badge_multi1.png", LocalizationManager.Text("SingleKill")),
+                ("badge_multi2.png", LocalizationManager.Text("DoubleKill")),
+                ("badge_multi3.png", LocalizationManager.Text("TripleKill")),
+                ("badge_multi4.png", LocalizationManager.Text("QuadraKill")),
+                ("badge_multi5.png", LocalizationManager.Text("PentaKill")),
+                ("badge_multi6.png", LocalizationManager.Text("HexaKill")),
+                ("badge_headshot.png", LocalizationManager.Text("Headshot")),
+                ("badge_headshot_gold.png", LocalizationManager.Text("FirstLastKill")),
+                ("badge_knife.png", LocalizationManager.Text("KnifeKill")),
+                ("FIRSTKILL.png", LocalizationManager.Text("FirstLastKill")),
+                ("LASTKILL.png", LocalizationManager.Text("FirstLastKill")),
+                ("KillMark_Upgrade1.png", LocalizationManager.Text("EliteLevel1")),
+                ("KillMark_Upgrade2.png", LocalizationManager.Text("EliteLevel2")),
+                ("KillMark_Upgrade3.png", LocalizationManager.Text("EliteLevel3")),
+                ("multi2_fx.png", LocalizationManager.Text("DoubleKillFX")),
+                ("multi3_fx.png", LocalizationManager.Text("TripleKillFX")),
+                ("multi4_fx.png", LocalizationManager.Text("QuadraKillFX")),
+                ("multi5_fx.png", LocalizationManager.Text("PentaKillFX")),
+                ("multi6_fx.png", LocalizationManager.Text("HexaKillFX")),
+                ("badge_knife_1.png", LocalizationManager.Text("EliteKnife1")),
+                ("badge_knife_2.png", LocalizationManager.Text("EliteKnife2")),
+                ("badge_knife_3.png", LocalizationManager.Text("EliteKnife3")),
+                ("badge_assault1.png", LocalizationManager.Text("ClassAssault") + " 1"),
+                ("badge_assault2.png", LocalizationManager.Text("ClassAssault") + " 2"),
+                ("badge_assault3.png", LocalizationManager.Text("ClassAssault") + " 3"),
+                ("badge_scout1.png", LocalizationManager.Text("ClassScout") + " 1"),
+                ("badge_scout2.png", LocalizationManager.Text("ClassScout") + " 2"),
+                ("badge_scout3.png", LocalizationManager.Text("ClassScout") + " 3"),
+                ("badge_sniper1.png", LocalizationManager.Text("ClassSniper") + " 1"),
+                ("badge_sniper2.png", LocalizationManager.Text("ClassSniper") + " 2"),
+                ("badge_sniper3.png", LocalizationManager.Text("ClassSniper") + " 3"),
+                ("badge_elite1.png", LocalizationManager.Text("ClassElite") + " 1"),
+                ("badge_elite2.png", LocalizationManager.Text("ClassElite") + " 2"),
+                ("badge_elite3.png", LocalizationManager.Text("ClassElite") + " 3"),
+                ("badge_knife1.png", LocalizationManager.Text("ClassKnife") + " 1"),
+                ("badge_knife2.png", LocalizationManager.Text("ClassKnife") + " 2"),
+                ("badge_knife3.png", LocalizationManager.Text("ClassKnife") + " 3")
             };
 
             await ShowPackCreationDialogAsync(
-                LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "图形化新建图标包" : "Create Icon Pack",
-                LocalizationManager.Current == UiLanguage.SimplifiedChinese
-                    ? "把 PNG 图标逐个填到这些槽位里。留空也能创建，缺图会自动回退原版。"
-                    : "Fill these PNG slots one by one. Empty slots are allowed and will fall back to Original.",
+                LocalizationManager.Text("CreateIconPack"),
+                LocalizationManager.Text("IconPackCreationHint"),
                 slots,
-                new[] { ".png" },
+                new[] { ".png", ".tga" },
                 PackCatalogService.CreateIconPackAsync,
                 initialDisplayName,
                 initialFiles);
@@ -616,11 +787,13 @@ namespace TestXboxGameBar
             var selectedFiles = initialFiles != null
                 ? new Dictionary<string, StorageFile>(initialFiles, StringComparer.OrdinalIgnoreCase)
                 : new Dictionary<string, StorageFile>(StringComparer.OrdinalIgnoreCase);
-            bool supportsImagePreview = Array.Exists(fileFilters, filter => string.Equals(filter, ".png", StringComparison.OrdinalIgnoreCase));
+            bool supportsImagePreview = Array.Exists(fileFilters, filter => 
+                string.Equals(filter, ".png", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(filter, ".tga", StringComparison.OrdinalIgnoreCase));
 
             var nameBox = new TextBox
             {
-                PlaceholderText = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "输入包名称" : "Pack name",
+                PlaceholderText = LocalizationManager.Text("IconPackNamePlaceholder"),
                 Text = initialDisplayName ?? string.Empty
             };
 
@@ -641,7 +814,7 @@ namespace TestXboxGameBar
                 selectedFiles.TryGetValue(slot.FileName, out StorageFile existingFile);
                 var fileNameText = new TextBlock
                 {
-                    Text = existingFile?.Name ?? (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "未选择" : "Not selected"),
+                    Text = existingFile?.Name ?? LocalizationManager.Text("NotSelected"),
                     FontSize = 12,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 142, 164, 184)),
                     TextWrapping = TextWrapping.WrapWholeWords
@@ -691,7 +864,7 @@ namespace TestXboxGameBar
 
                 var browseButton = new Button
                 {
-                    Content = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "选择文件" : "Choose File",
+                    Content = LocalizationManager.Text("ChooseFile"),
                     Padding = new Thickness(10, 4, 10, 4)
                 };
                 browseButton.Click += async (_, __) =>
@@ -721,8 +894,8 @@ namespace TestXboxGameBar
             {
                 Title = title,
                 Content = layout,
-                PrimaryButtonText = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "创建" : "Create",
-                CloseButtonText = LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "取消" : "Cancel"
+                PrimaryButtonText = LocalizationManager.Text("Create"),
+                CloseButtonText = LocalizationManager.Text("Cancel")
             };
 
             ContentDialogResult result = await dialog.ShowAsync();
@@ -732,7 +905,7 @@ namespace TestXboxGameBar
             }
 
             string displayName = string.IsNullOrWhiteSpace(nameBox.Text)
-                ? (LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "新建集合" : "New Pack")
+                ? LocalizationManager.Text("NewPack")
                 : nameBox.Text.Trim();
             await createHandler(displayName, selectedFiles);
         }
@@ -741,20 +914,150 @@ namespace TestXboxGameBar
         {
             try
             {
-                var bitmap = new BitmapImage();
-                using (var stream = await file.OpenReadAsync())
+                if (file.FileType.Equals(".tga", StringComparison.OrdinalIgnoreCase))
                 {
-                    await bitmap.SetSourceAsync(stream);
+                    var softwareBitmap = await TgaDecoder.GetSoftwareBitmapAsync(file);
+                    if (softwareBitmap != null)
+                    {
+                        var source = new SoftwareBitmapSource();
+                        await source.SetBitmapAsync(softwareBitmap);
+                        image.Source = source;
+                        image.Visibility = Visibility.Visible;
+                    }
+                    else
+                    {
+                        image.Source = null;
+                        image.Visibility = Visibility.Collapsed;
+                    }
                 }
-
-                image.Source = bitmap;
-                image.Visibility = Visibility.Visible;
+                else
+                {
+                    var bitmap = new BitmapImage();
+                    using (var stream = await file.OpenReadAsync())
+                    {
+                        await bitmap.SetSourceAsync(stream);
+                    }
+                    image.Source = bitmap;
+                    image.Visibility = Visibility.Visible;
+                }
             }
             catch
             {
                 image.Source = null;
                 image.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private static async Task<StorageFolder> ExtractZipToTemporaryFolderAsync(StorageFile zipFile)
+        {
+            StorageFolder tempRoot = await ApplicationData.Current.TemporaryFolder.CreateFolderAsync(
+                "ImportedPack_" + Guid.NewGuid().ToString("N"),
+                CreationCollisionOption.FailIfExists);
+
+            using (Stream zipStream = await zipFile.OpenStreamForReadAsync())
+            using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Read))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
+                {
+                    if (string.IsNullOrWhiteSpace(entry.FullName))
+                    {
+                        continue;
+                    }
+
+                    string normalizedPath = entry.FullName.Replace('\\', '/');
+                    string[] segments = normalizedPath
+                        .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (segments.Length == 0 || segments.Any(IsUnsafeZipPathSegment))
+                    {
+                        continue;
+                    }
+
+                    bool isDirectory = normalizedPath.EndsWith("/", StringComparison.Ordinal);
+                    StorageFolder targetFolder = await CreateFolderPathAsync(
+                        tempRoot,
+                        isDirectory ? segments : segments.Take(segments.Length - 1));
+
+                    if (isDirectory)
+                    {
+                        continue;
+                    }
+
+                    StorageFile targetFile = await targetFolder.CreateFileAsync(
+                        segments[segments.Length - 1],
+                        CreationCollisionOption.ReplaceExisting);
+                    using (Stream entryStream = entry.Open())
+                    using (Stream targetStream = await targetFile.OpenStreamForWriteAsync())
+                    {
+                        targetStream.SetLength(0);
+                        await entryStream.CopyToAsync(targetStream);
+                    }
+                }
+            }
+
+            return tempRoot;
+        }
+
+        private static bool IsUnsafeZipPathSegment(string segment)
+        {
+            return string.IsNullOrWhiteSpace(segment)
+                || segment == "."
+                || segment == ".."
+                || segment.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0;
+        }
+
+        private static async Task<StorageFolder> CreateFolderPathAsync(StorageFolder root, IEnumerable<string> segments)
+        {
+            StorageFolder current = root;
+            foreach (string segment in segments)
+            {
+                current = await current.CreateFolderAsync(segment, CreationCollisionOption.OpenIfExists);
+            }
+
+            return current;
+        }
+
+        private static async Task<StorageFolder> FindBestPackFolderAsync(StorageFolder root, IReadOnlyList<string> recognizedFileNames)
+        {
+            StorageFolder bestFolder = root;
+            int bestScore = await CountRecognizedFilesAsync(root, recognizedFileNames);
+            IReadOnlyList<StorageFolder> subFolders = await root.GetFoldersAsync();
+            foreach (StorageFolder subFolder in subFolders)
+            {
+                (StorageFolder folder, int score) = await FindBestPackFolderRecursiveAsync(subFolder, recognizedFileNames);
+                if (score > bestScore)
+                {
+                    bestFolder = folder;
+                    bestScore = score;
+                }
+            }
+
+            return bestFolder;
+        }
+
+        private static async Task<(StorageFolder Folder, int Score)> FindBestPackFolderRecursiveAsync(
+            StorageFolder folder,
+            IReadOnlyList<string> recognizedFileNames)
+        {
+            StorageFolder bestFolder = folder;
+            int bestScore = await CountRecognizedFilesAsync(folder, recognizedFileNames);
+            IReadOnlyList<StorageFolder> subFolders = await folder.GetFoldersAsync();
+            foreach (StorageFolder subFolder in subFolders)
+            {
+                (StorageFolder candidateFolder, int candidateScore) = await FindBestPackFolderRecursiveAsync(subFolder, recognizedFileNames);
+                if (candidateScore > bestScore)
+                {
+                    bestFolder = candidateFolder;
+                    bestScore = candidateScore;
+                }
+            }
+
+            return (bestFolder, bestScore);
+        }
+
+        private static async Task<int> CountRecognizedFilesAsync(StorageFolder folder, IReadOnlyList<string> recognizedFileNames)
+        {
+            IReadOnlyDictionary<string, StorageFile> files = await CollectRecognizedFilesAsync(folder, recognizedFileNames.ToArray());
+            return files.Count;
         }
 
         private async Task<StorageFile> PickSingleFileAsync(string[] fileFilters)
@@ -768,12 +1071,42 @@ namespace TestXboxGameBar
             return await picker.PickSingleFileAsync();
         }
 
+        private async Task ShowMessageAsync(string title, string message)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = title,
+                Content = message,
+                CloseButtonText = LocalizationManager.Text("Cancel")
+            };
+            await dialog.ShowAsync();
+        }
+
         private static async Task<IReadOnlyDictionary<string, StorageFile>> CollectRecognizedFilesAsync(StorageFolder folder, params string[] fileNames)
         {
             var files = new Dictionary<string, StorageFile>(StringComparer.OrdinalIgnoreCase);
             foreach (string fileName in fileNames)
             {
                 StorageFile file = await TryGetFileAsync(folder, fileName);
+                if (file == null && fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                {
+                    // If .png not found, check for .tga
+                    string tgaName = System.IO.Path.ChangeExtension(fileName, ".tga");
+                    file = await TryGetFileAsync(folder, tgaName);
+
+                    // If still not found, check subfolders like "badgeex"
+                    if (file == null)
+                    {
+                        try
+                        {
+                            StorageFolder badgeex = await folder.GetFolderAsync("badgeex");
+                            file = await TryGetFileAsync(badgeex, tgaName) 
+                                ?? await TryGetFileAsync(badgeex, fileName);
+                        }
+                        catch { }
+                    }
+                }
+
                 if (file != null)
                 {
                     files[fileName] = file;
@@ -781,6 +1114,19 @@ namespace TestXboxGameBar
             }
 
             return files;
+        }
+
+        private static async Task<IReadOnlyDictionary<string, StorageFile>> CollectRecognizedFilesFromFolderAsync(string folderPath, params string[] fileNames)
+        {
+            try
+            {
+                StorageFolder folder = await StorageFolder.GetFolderFromPathAsync(folderPath);
+                return await CollectRecognizedFilesAsync(folder, fileNames);
+            }
+            catch
+            {
+                return new Dictionary<string, StorageFile>(StringComparer.OrdinalIgnoreCase);
+            }
         }
 
         private static async Task<StorageFile> TryGetFileAsync(StorageFolder folder, string fileName)
@@ -829,69 +1175,28 @@ namespace TestXboxGameBar
 
         private void ApplyLanguage()
         {
-            if (LocalizationManager.Current == UiLanguage.SimplifiedChinese)
-            {
-                TitleText.Text = "击杀确认悬浮窗高级设置";
-                InstructionText.Text = "这里主要用来管理、导入和创建语音包与图标包。";
-                ShortcutText.Text = "如果走文件夹导入，按右侧推荐结构准备内容会最省事。";
-                VoiceCollectionsTitleText.Text = "语音集合";
-                VoiceCollectionsHintText.Text = "可以直接导入文件夹，也可以图形化新建。勾选后才会显示到 Game Bar。";
-                IconCollectionsTitleText.Text = "图标集合";
-                IconCollectionsHintText.Text = "可以直接导入文件夹，也可以图形化新建。勾选后才会显示到 Game Bar。";
-                ImportVoicePackButton.Content = "导入语音包";
-                CreateVoicePackButton.Content = "图形化新建";
-                ImportIconPackButton.Content = "导入图标包";
-                CreateIconPackButton.Content = "图形化新建";
-                StructureTitleText.Text = "推荐文件夹结构";
-                StructureBodyText.Text = "如果你走文件夹导入，这样组织内容最稳。语音包和图标包都可以只放一部分，缺的会跳过或回退。";
-                StructureListText.Text =
-                    "voice pack folder\n" +
-                    "  sound.lua   (可选)\n" +
-                    "  common_overlay.wav   (可选)\n" +
-                    "  common.wav\n" +
-                    "  2.wav ~ 8.wav\n" +
-                    "  headshot.wav\n" +
-                    "  knife.wav\n" +
-                    "  firstandlast.wav\n\n" +
-                    "icon pack folder\n" +
-                    "  badge_multi1.png ~ badge_multi6.png\n" +
-                    "  badge_headshot.png\n" +
-                    "  badge_headshot_gold.png\n" +
-                    "  badge_knife.png\n" +
-                    "  FIRSTKILL.png\n" +
-                    "  LASTKILL.png";
-                return;
-            }
-
-            TitleText.Text = "Kill Confirm Overlay Advanced Settings";
-            InstructionText.Text = "This page focuses on managing, importing, and creating voice packs and icon packs.";
-            ShortcutText.Text = "For folder import, the structure on the right is the safest layout to follow.";
-            VoiceCollectionsTitleText.Text = "Voice Collections";
-            VoiceCollectionsHintText.Text = "Use folder import or the graphical creator. Only checked packs appear in Game Bar.";
-            IconCollectionsTitleText.Text = "Icon Collections";
-            IconCollectionsHintText.Text = "Use folder import or the graphical creator. Only checked packs appear in Game Bar.";
-            ImportVoicePackButton.Content = "Import Voice Pack";
-            CreateVoicePackButton.Content = "Create Visually";
-            ImportIconPackButton.Content = "Import Icon Pack";
-            CreateIconPackButton.Content = "Create Visually";
-            StructureTitleText.Text = "Recommended Folder Layout";
-            StructureBodyText.Text = "For folder import, this structure is the safest. Both voice packs and icon packs can be partial; missing items will skip or fall back.";
-            StructureListText.Text =
-                "voice pack folder\n" +
-                "  sound.lua   (optional)\n" +
-                "  common_overlay.wav   (optional)\n" +
-                "  common.wav\n" +
-                "  2.wav ~ 8.wav\n" +
-                "  headshot.wav\n" +
-                "  knife.wav\n" +
-                "  firstandlast.wav\n\n" +
-                "icon pack folder\n" +
-                "  badge_multi1.png ~ badge_multi6.png\n" +
-                "  badge_headshot.png\n" +
-                "  badge_headshot_gold.png\n" +
-                "  badge_knife.png\n" +
-                "  FIRSTKILL.png\n" +
-                "  LASTKILL.png";
+            TitleText.Text = LocalizationManager.Text("MainTitle");
+            InstructionText.Text = LocalizationManager.Text("MainInstruction");
+            ShortcutText.Text = LocalizationManager.Text("MainShortcut");
+            
+            VoiceCollectionsTitleText.Text = LocalizationManager.Text("VoiceCollectionsTitle");
+            VoiceCollectionsHintText.Text = LocalizationManager.Text("VoiceCollectionsHint");
+            IconCollectionsTitleText.Text = LocalizationManager.Text("IconCollectionsTitle");
+            IconCollectionsHintText.Text = LocalizationManager.Text("IconCollectionsHint");
+            
+            ImportVoicePackButton.Content = LocalizationManager.Text("ImportVoicePack");
+            ImportVoiceZipButton.Content = LocalizationManager.Text("ImportZip");
+            CreateVoicePackButton.Content = LocalizationManager.Text("CreateVoicePack");
+            ImportIconPackButton.Content = LocalizationManager.Text("ImportIconPack");
+            ImportIconZipButton.Content = LocalizationManager.Text("ImportZip");
+            CreateIconPackButton.Content = LocalizationManager.Text("CreateIconPack");
+            
+            StructureTitleText.Text = LocalizationManager.Text("StructureTitle");
+            StructureBodyText.Text = LocalizationManager.Text("StructureBody");
+            StructureListText.Text = LocalizationManager.Text("StructureList");
+            
+            TipsTitleText.Text = LocalizationManager.Text("TipsTitle");
+            TipsBodyText.Text = LocalizationManager.Text("TipsBody");
         }
     }
 }

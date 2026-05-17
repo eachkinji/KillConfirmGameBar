@@ -5,173 +5,240 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="#0F171E">
+    RequestedTheme="Dark">
 
-    <ScrollViewer>
-        <Grid Padding="28" RowSpacing="22">
+    <Page.Resources>
+        <LinearGradientBrush x:Key="MainBackgroundGradient" StartPoint="0.5,0" EndPoint="0.5,1">
+            <GradientStop Color="#0A0A0A" Offset="0.0" />
+            <GradientStop Color="#161616" Offset="1.0" />
+        </LinearGradientBrush>
+
+        <AcrylicBrush x:Key="MainBackgroundAcrylic"
+                      BackgroundSource="HostBackdrop"
+                      TintColor="#0F0F0F"
+                      TintOpacity="0.7"
+                      FallbackColor="#0F0F0F" />
+
+        <AcrylicBrush x:Key="CardBackgroundAcrylic"
+                      BackgroundSource="Backdrop"
+                      TintColor="#1A1A1A"
+                      TintOpacity="0.7"
+                      FallbackColor="#1A1A1A" />
+
+        <Style x:Key="SettingsSectionCardStyle" TargetType="Border">
+            <Setter Property="Padding" Value="24" />
+            <Setter Property="Background" Value="{StaticResource CardBackgroundAcrylic}" />
+            <Setter Property="BorderBrush" Value="#404040" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+        </Style>
+
+        <Style x:Key="SettingsHeaderButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="MinWidth" Value="104" />
+            <Setter Property="Background" Value="#2A2A2A" />
+            <Setter Property="Foreground" Value="#EEEEEE" />
+            <Setter Property="BorderBrush" Value="#444444" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+
+        <Style x:Key="SettingsPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource SettingsHeaderButtonStyle}">
+            <Setter Property="Background" Value="#0078D4" />
+            <Setter Property="BorderBrush" Value="#0086F0" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style x:Key="SettingsCaptionTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="#BBBBBB" />
+            <Setter Property="TextWrapping" Value="WrapWholeWords" />
+            <Setter Property="LineHeight" Value="20" />
+        </Style>
+
+        <Style x:Key="SettingsSectionTitleTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="CharacterSpacing" Value="20" />
+        </Style>
+    </Page.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Background="{StaticResource MainBackgroundGradient}">
+        <Grid Padding="40,32,40,40" RowSpacing="28">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <StackPanel MaxWidth="980" HorizontalAlignment="Center">
+            <StackPanel MaxWidth="1100" HorizontalAlignment="Center" Spacing="10">
                 <TextBlock
                     x:Name="TitleText"
-                    Text="Kill Confirm Overlay"
-                    FontFamily="Bahnschrift SemiBold"
-                    FontSize="32"
-                    FontWeight="SemiBold"
-                    Foreground="#F7FBFF" />
+                    FontSize="36"
+                    FontWeight="Black"
+                    Foreground="#FFFFFF"
+                    TextWrapping="WrapWholeWords"
+                    Text="Kill Confirm Overlay Advanced Settings" />
                 <TextBlock
                     x:Name="InstructionText"
-                    Margin="0,8,0,0"
+                    Style="{StaticResource SettingsCaptionTextStyle}"
                     FontSize="16"
-                    Foreground="#B7C7D8"
-                    TextWrapping="WrapWholeWords" />
+                    Foreground="#CCCCCC" />
                 <TextBlock
                     x:Name="ShortcutText"
-                    Margin="0,12,0,0"
-                    FontSize="13"
-                    Foreground="#8EA4B8"
-                    TextWrapping="WrapWholeWords" />
+                    Style="{StaticResource SettingsCaptionTextStyle}"
+                    FontSize="14"
+                    TextWrapping="WrapWholeWords"
+                    Foreground="#888888" />
             </StackPanel>
 
             <Grid
                 Grid.Row="1"
-                MaxWidth="980"
+                MaxWidth="1040"
                 HorizontalAlignment="Center"
-                ColumnSpacing="22">
+                ColumnSpacing="18">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.08*" />
-                    <ColumnDefinition Width="0.92*" />
+                    <ColumnDefinition Width="1.15*" />
+                    <ColumnDefinition Width="0.85*" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Spacing="12">
-                    <Border
-                        Padding="16"
-                        Background="#16222D"
-                        BorderBrush="#2B3D4C"
-                        BorderThickness="1"
-                        CornerRadius="8">
-                        <StackPanel Spacing="10">
-                            <TextBlock
-                                x:Name="VoiceCollectionsTitleText"
-                                FontSize="17"
-                                FontWeight="SemiBold"
-                                Foreground="#F7FBFF" />
-                            <Grid ColumnSpacing="10">
+                <StackPanel Spacing="14">
+                    <Border Style="{StaticResource SettingsSectionCardStyle}">
+                        <StackPanel Spacing="14">
+                            <Grid RowSpacing="12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    x:Name="VoiceCollectionsHintText"
-                                    VerticalAlignment="Center"
-                                    FontSize="13"
-                                    Foreground="#8EA4B8"
-                                    TextWrapping="WrapWholeWords" />
-                                <Button
-                                    x:Name="ImportVoicePackButton"
-                                    Grid.Column="1"
-                                    Padding="12,6"
-                                    Click="OnImportVoicePackClick"
-                                    Content="导入语音包" />
-                                <Button
-                                    x:Name="CreateVoicePackButton"
-                                    Grid.Column="2"
-                                    Padding="12,6"
-                                    Click="OnCreateVoicePackClick"
-                                    Content="图形化新建" />
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock
+                                        x:Name="VoiceCollectionsTitleText"
+                                        Style="{StaticResource SettingsSectionTitleTextStyle}" />
+                                    <TextBlock
+                                        x:Name="VoiceCollectionsHintText"
+                                        Style="{StaticResource SettingsCaptionTextStyle}" />
+                                </StackPanel>
+
+                                <StackPanel
+                                    Grid.Row="1"
+                                    Orientation="Horizontal"
+                                    Spacing="12">
+                                    <Button
+                                        x:Name="ImportVoicePackButton"
+                                        Style="{StaticResource SettingsHeaderButtonStyle}"
+                                        Click="OnImportVoicePackClick" />
+                                    <Button
+                                        x:Name="ImportVoiceZipButton"
+                                        Style="{StaticResource SettingsHeaderButtonStyle}"
+                                        Click="OnImportVoiceZipClick" />
+                                    <Button
+                                        x:Name="CreateVoicePackButton"
+                                        Style="{StaticResource SettingsPrimaryButtonStyle}"
+                                        Click="OnCreateVoicePackClick" />
+                                </StackPanel>
                             </Grid>
+
                             <TextBlock
                                 x:Name="VoiceVisibleCountText"
-                                FontSize="12"
-                                Foreground="#BFD0E3" />
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="#4A90E2" />
+
                             <StackPanel x:Name="VoicePackListPanel" Spacing="8" />
                         </StackPanel>
                     </Border>
 
-                    <Border
-                        Padding="16"
-                        Background="#16222D"
-                        BorderBrush="#2B3D4C"
-                        BorderThickness="1"
-                        CornerRadius="8">
-                        <StackPanel Spacing="10">
-                            <TextBlock
-                                x:Name="IconCollectionsTitleText"
-                                FontSize="17"
-                                FontWeight="SemiBold"
-                                Foreground="#F7FBFF" />
-                            <Grid ColumnSpacing="10">
+                    <Border Style="{StaticResource SettingsSectionCardStyle}">
+                        <StackPanel Spacing="14">
+                            <Grid RowSpacing="12">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    x:Name="IconCollectionsHintText"
-                                    VerticalAlignment="Center"
-                                    FontSize="13"
-                                    Foreground="#8EA4B8"
-                                    TextWrapping="WrapWholeWords" />
-                                <Button
-                                    x:Name="ImportIconPackButton"
-                                    Grid.Column="1"
-                                    Padding="12,6"
-                                    Click="OnImportIconPackClick"
-                                    Content="导入图标包" />
-                                <Button
-                                    x:Name="CreateIconPackButton"
-                                    Grid.Column="2"
-                                    Padding="12,6"
-                                    Click="OnCreateIconPackClick"
-                                    Content="图形化新建" />
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock
+                                        x:Name="IconCollectionsTitleText"
+                                        Style="{StaticResource SettingsSectionTitleTextStyle}" />
+                                    <TextBlock
+                                        x:Name="IconCollectionsHintText"
+                                        Style="{StaticResource SettingsCaptionTextStyle}" />
+                                </StackPanel>
+
+                                <StackPanel
+                                    Grid.Row="1"
+                                    Orientation="Horizontal"
+                                    Spacing="12">
+                                    <Button
+                                        x:Name="ImportIconPackButton"
+                                        Style="{StaticResource SettingsHeaderButtonStyle}"
+                                        Click="OnImportIconPackClick" />
+                                    <Button
+                                        x:Name="ImportIconZipButton"
+                                        Style="{StaticResource SettingsHeaderButtonStyle}"
+                                        Click="OnImportIconZipClick" />
+                                    <Button
+                                        x:Name="CreateIconPackButton"
+                                        Style="{StaticResource SettingsPrimaryButtonStyle}"
+                                        Click="OnCreateIconPackClick" />
+                                </StackPanel>
                             </Grid>
+
                             <TextBlock
                                 x:Name="IconVisibleCountText"
-                                FontSize="12"
-                                Foreground="#BFD0E3" />
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="#4A90E2" />
+
                             <StackPanel x:Name="IconPackListPanel" Spacing="8" />
                         </StackPanel>
                     </Border>
-
                 </StackPanel>
 
                 <StackPanel
                     Grid.Column="1"
-                    Spacing="12">
-                    <Border
-                        Padding="16"
-                        Background="#101A23"
-                        BorderBrush="#2B3D4C"
-                        BorderThickness="1"
-                        CornerRadius="8">
-                        <StackPanel Spacing="12">
+                    Spacing="14">
+                    <Border Style="{StaticResource SettingsSectionCardStyle}">
+                        <StackPanel Spacing="10">
                             <TextBlock
                                 x:Name="StructureTitleText"
-                                FontSize="17"
-                                FontWeight="SemiBold"
-                                Foreground="#F7FBFF" />
+                                Style="{StaticResource SettingsSectionTitleTextStyle}" />
                             <TextBlock
                                 x:Name="StructureBodyText"
-                                FontSize="13"
-                                Foreground="#C8D6E4"
-                                TextWrapping="WrapWholeWords" />
+                                Style="{StaticResource SettingsCaptionTextStyle}" />
                             <Border
-                                Padding="12"
-                                Background="#172432"
-                                BorderBrush="#375066"
+                                Padding="14"
+                                Background="#121212"
+                                BorderBrush="#333333"
                                 BorderThickness="1"
-                                CornerRadius="8">
+                                CornerRadius="10">
                                 <TextBlock
                                     x:Name="StructureListText"
                                     FontFamily="Consolas"
-                                    FontSize="12"
-                                    Foreground="#D8E7F5"
+                                    FontSize="13"
+                                    Foreground="#00FF41"
                                     TextWrapping="WrapWholeWords" />
                             </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SettingsSectionCardStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock
+                                x:Name="TipsTitleText"
+                                Style="{StaticResource SettingsSectionTitleTextStyle}"
+                                FontSize="18" />
+                            <TextBlock
+                                x:Name="TipsBodyText"
+                                Style="{StaticResource SettingsCaptionTextStyle}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>

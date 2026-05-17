@@ -28,7 +28,7 @@ namespace TestXboxGameBar
 {
     public sealed partial class ClockWidgetPage : Page
     {
-        private static readonly Size DefaultWidgetSize = new Size(324, 190);
+        private static readonly Size DefaultWidgetSize = new Size(350, 500);
         private static readonly Size MinWidgetSize = new Size(160, 120);
         private static readonly Size MaxWidgetSize = new Size(720, 720);
         private const double AnimationOffsetStep = 12.0;
@@ -52,6 +52,7 @@ namespace TestXboxGameBar
         private const string PlaybackFpsSettingKey = "AnimationPlaybackFps";
         private const string IconPackSettingKey = "KillIconPack";
         private const string EliteEffectSettingKey = "KillEliteEffect";
+        private const string KillFxSettingKey = "KillFxEnabled";
         private const string WeaponBadgeSettingKey = "KillWeaponBadge";
         private const string MainAnimationStyleSettingKey = "MainAnimationStyle";
         private const string AnimationPlacementSettingKey = "AnimationPlacement";
@@ -86,7 +87,7 @@ namespace TestXboxGameBar
             " }\r\n" +
             "}\r\n";
         private const int ControlPanelStateRefreshMs = 250;
-        private const int StatusHintRotationMs = 5000;
+        private const int StatusHintRotationMs = 2000;
         private const string PackagedServiceParameterGroupId = "CrossfirePreset";
         private const string FullTrustProcessLauncherRuntimeClass = "Windows.ApplicationModel.FullTrustProcessLauncher";
         private static readonly System.Guid FullTrustProcessLauncherStaticsGuid =
@@ -140,6 +141,7 @@ namespace TestXboxGameBar
         private bool _suppressVoicePackEvents;
         private bool _suppressIconPackEvents;
         private bool _suppressEliteEffectEvents;
+        private bool _suppressKillFxEvents;
         private bool _suppressWeaponBadgeEvents;
         private bool _suppressMainAnimationStyleEvents;
         private bool _suppressLanguageEvents = true;
@@ -246,6 +248,7 @@ namespace TestXboxGameBar
             await PopulateIconPackSelectorAsync();
             LoadIconPackSetting();
             LoadEliteEffectSetting();
+            LoadKillFxSetting();
             LoadWeaponBadgeSetting();
             LoadMainAnimationStyleSetting();
             LoadVoicePackSetting();
@@ -306,7 +309,7 @@ namespace TestXboxGameBar
             {
                 IconPackSelector.Items.Add(new ComboBoxItem
                 {
-                    Content = "原版",
+                    Content = "\u539f\u7248",
                     Tag = "default",
                     Foreground = new SolidColorBrush(Colors.White)
                 });
@@ -783,52 +786,87 @@ namespace TestXboxGameBar
             {
                 _ = InitializePackSelectorsAsync();
             }
-            ToolTipService.SetToolTip(LanguageToggleButton, "Language / \u8BED\u8A00");
+            
+            SetNamedToolTip(LanguageToggleButton, LocalizationManager.Text("LanguageTitle"), LocalizationManager.Text("LanguageTooltip"));
 
-            ToolTipService.SetToolTip(OpenGuideButton, LocalizationManager.Text("OpenGuideTooltip"));
-            ToolTipService.SetToolTip(OpenLogsButton, LocalizationManager.Text("OpenLogsTooltip"));
-            ToolTipService.SetToolTip(FreePortButton, LocalizationManager.Text("FreePortTooltip"));
-            ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTooltip"));
-            ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTooltip"));
-            ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTooltip"));
-            ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheTooltip"));
+            SetNamedToolTip(OpenGuideButton, LocalizationManager.Text("OpenGuideTitle"), LocalizationManager.Text("OpenGuideTooltip"));
+            SetNamedToolTip(OpenLogsButton, LocalizationManager.Text("OpenLogsTitle"), LocalizationManager.Text("OpenLogsTooltip"));
+            SetNamedToolTip(FreePortButton, LocalizationManager.Text("FreePortTitle"), LocalizationManager.Text("FreePortTooltip"));
+            SetNamedToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTitle"), LocalizationManager.Text("ServiceStatusTooltip"));
+            SetNamedToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTitle"), LocalizationManager.Text("CfgStatusTooltip"));
+            SetNamedToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTitle"), LocalizationManager.Text("GsiStatusTooltip"));
+            SetNamedToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheTitle"), LocalizationManager.Text("AnimationCacheTooltip"));
 
             ServiceBadgeText.Text = "SVC";
             CfgBadgeText.Text = "CFG";
             GsiBadgeText.Text = "GSI";
             CfgLabelText.Text = LocalizationManager.Text("CfgLabel");
-            CrossfireSwatGrVoiceItem.Content = LocalizationManager.Text("CrossfireSwatGr");
-            CrossfireSwatBlVoiceItem.Content = LocalizationManager.Text("CrossfireSwatBl");
-            CrossfireFlyingTigerGrVoiceItem.Content = LocalizationManager.Text("CrossfireFlyingTigerGr");
-            CrossfireFlyingTigerBlVoiceItem.Content = LocalizationManager.Text("CrossfireFlyingTigerBl");
-            CrossfireWomenGrVoiceItem.Content = LocalizationManager.Text("CrossfireWomenGr");
-            CrossfireWomenBlVoiceItem.Content = LocalizationManager.Text("CrossfireWomenBl");
+            
+            // Built-in Voice Items
+            CrossfireSwatGrVoiceItem.Content = LocalizationManager.Text("crossfire_swat_gr");
+            CrossfireSwatBlVoiceItem.Content = LocalizationManager.Text("crossfire_swat_bl");
+            CrossfireFlyingTigerGrVoiceItem.Content = LocalizationManager.Text("crossfire_flying_tiger_gr");
+            CrossfireFlyingTigerBlVoiceItem.Content = LocalizationManager.Text("crossfire_flying_tiger_bl");
+            CrossfireWomenGrVoiceItem.Content = LocalizationManager.Text("crossfire_women_gr");
+            CrossfireWomenBlVoiceItem.Content = LocalizationManager.Text("crossfire_women_bl");
 
-            ToolTipService.SetToolTip(VoicePackSelector, LocalizationManager.Text("VoiceTooltip"));
-            ToolTipService.SetToolTip(IconPackSelector, "Kill icon pack / 击杀图标包");
-            ToolTipService.SetToolTip(SelectCsFolderButton, LocalizationManager.Text("SelectCsFolderTooltip"));
+            // ToolTips for Icons (Separated)
+            SetNamedToolTip(VoicePackIcon, LocalizationManager.Text("VoicePackLabel"), LocalizationManager.Text("VoiceTooltip"));
+            SetNamedToolTip(IconPackIcon, LocalizationManager.Text("IconPackLabel"), LocalizationManager.Text("IconPackTooltip"));
+            SetNamedToolTip(EliteOverlayIcon, LocalizationManager.Text("EliteOverlayLabel"), LocalizationManager.Text("EliteOverlayTooltip"));
+            SetNamedToolTip(WeaponBadgeIcon, LocalizationManager.Text("WeaponBadgeLabel"), LocalizationManager.Text("WeaponBadgeTooltip"));
+            SetNamedToolTip(MainAnimationIcon, LocalizationManager.Text("MainAnimationLabel"), LocalizationManager.Text("MainAnimationTooltip"));
+
+            // Selectors
+            SetNamedToolTip(VoicePackSelector, LocalizationManager.Text("VoicePackLabel"), LocalizationManager.Text("VoiceTooltip"));
+            SetNamedToolTip(IconPackSelector, LocalizationManager.Text("IconPackLabel"), LocalizationManager.Text("IconPackTooltip"));
+            SetNamedToolTip(EliteEffectSelector, LocalizationManager.Text("EliteOverlayLabel"), LocalizationManager.Text("EliteOverlayTooltip"));
+            SetNamedToolTip(WeaponBadgeSelector, LocalizationManager.Text("WeaponBadgeLabel"), LocalizationManager.Text("WeaponBadgeTooltip"));
+            SetNamedToolTip(MainAnimationStyleSelector, LocalizationManager.Text("MainAnimationLabel"), LocalizationManager.Text("MainAnimationTooltip"));
+
+            SetNamedToolTip(SelectCsFolderButton, LocalizationManager.Text("SelectCsFolderTitle"), LocalizationManager.Text("SelectCsFolderTooltip"));
             CfgInstallButton.Content = LocalizationManager.Text("Add");
-            ToolTipService.SetToolTip(CfgInstallButton, LocalizationManager.Text("AddMissingCfgTooltip"));
+            SetNamedToolTip(CfgInstallButton, LocalizationManager.Text("AddMissingCfgTitle"), LocalizationManager.Text("AddMissingCfgTooltip"));
 
-            ToolTipService.SetToolTip(TestPresetSelector, LocalizationManager.Text("TestPresetTooltip"));
-            ToolTipService.SetToolTip(SendTestButton, LocalizationManager.Text("SendTestTooltip"));
-            ToolTipService.SetToolTip(ReloadAudioButton, LocalizationManager.Text("ReloadAudioTooltip"));
+            SetNamedToolTip(TestPresetSelector, LocalizationManager.Text("TestPresetTitle"), LocalizationManager.Text("TestPresetTooltip"));
+            SetNamedToolTip(SendTestButton, LocalizationManager.Text("SendTestTitle"), LocalizationManager.Text("SendTestTooltip"));
+            SetNamedToolTip(ReloadAudioButton, LocalizationManager.Text("ReloadAudioTitle"), LocalizationManager.Text("ReloadAudioTooltip"));
 
-            ToolTipService.SetToolTip(DefaultSizeButton, LocalizationManager.Text("DefaultSizeTooltip"));
-            ToolTipService.SetToolTip(CenterButton, LocalizationManager.Text("CenterWindowTooltip"));
-            ToolTipService.SetToolTip(LowerThirdButton, LocalizationManager.Text("LowerThirdTooltip"));
-            ToolTipService.SetToolTip(MoveUpButton, LocalizationManager.Text("MoveUpTooltip"));
-            ToolTipService.SetToolTip(MoveDownButton, LocalizationManager.Text("MoveDownTooltip"));
-            ToolTipService.SetToolTip(ScaleDownButton, LocalizationManager.Text("ShrinkTooltip"));
-            ToolTipService.SetToolTip(ScaleUpButton, LocalizationManager.Text("EnlargeTooltip"));
+            SetNamedToolTip(DefaultSizeButton, LocalizationManager.Text("DefaultSizeTitle"), LocalizationManager.Text("DefaultSizeTooltip"));
+            SetNamedToolTip(CenterButton, LocalizationManager.Text("CenterWindowTitle"), LocalizationManager.Text("CenterWindowTooltip"));
+            SetNamedToolTip(LowerThirdButton, LocalizationManager.Text("LowerThirdTitle"), LocalizationManager.Text("LowerThirdTooltip"));
+            SetNamedToolTip(MoveUpButton, LocalizationManager.Text("MoveUpTitle"), LocalizationManager.Text("MoveUpTooltip"));
+            SetNamedToolTip(MoveDownButton, LocalizationManager.Text("MoveDownTitle"), LocalizationManager.Text("MoveDownTooltip"));
+            SetNamedToolTip(ScaleDownButton, LocalizationManager.Text("ShrinkTitle"), LocalizationManager.Text("ShrinkTooltip"));
+            SetNamedToolTip(ScaleUpButton, LocalizationManager.Text("EnlargeTitle"), LocalizationManager.Text("EnlargeTooltip"));
 
-            ToolTipService.SetToolTip(BrightnessIcon, LocalizationManager.Text("BrightnessTooltip"));
-            ToolTipService.SetToolTip(BrightnessSelector, LocalizationManager.Text("BrightnessTooltip"));
-            ToolTipService.SetToolTip(ContrastIcon, LocalizationManager.Text("ContrastTooltip"));
-            ToolTipService.SetToolTip(ContrastSelector, LocalizationManager.Text("ContrastTooltip"));
-            ToolTipService.SetToolTip(VolumeIcon, LocalizationManager.Text("AudioVolumeTooltip"));
-            ToolTipService.SetToolTip(AudioVolumeSelector, LocalizationManager.Text("AudioVolumeTooltip"));
-            ToolTipService.SetToolTip(ResetVisualButton, LocalizationManager.Text("ResetTooltip"));
+            SetNamedToolTip(BrightnessIcon, LocalizationManager.Text("BrightnessTitle"), LocalizationManager.Text("BrightnessTooltip"));
+            SetNamedToolTip(BrightnessSelector, LocalizationManager.Text("BrightnessTitle"), LocalizationManager.Text("BrightnessTooltip"));
+            SetNamedToolTip(ContrastIcon, LocalizationManager.Text("ContrastTitle"), LocalizationManager.Text("ContrastTooltip"));
+            SetNamedToolTip(ContrastSelector, LocalizationManager.Text("ContrastTitle"), LocalizationManager.Text("ContrastTooltip"));
+            SetNamedToolTip(VolumeIcon, LocalizationManager.Text("AudioVolumeTitle"), LocalizationManager.Text("AudioVolumeTooltip"));
+            SetNamedToolTip(AudioVolumeSelector, LocalizationManager.Text("AudioVolumeTitle"), LocalizationManager.Text("AudioVolumeTooltip"));
+            SetNamedToolTip(ResetVisualButton, LocalizationManager.Text("ResetTitle"), LocalizationManager.Text("ResetTooltip"));
+
+            // Icon Pack Dropdown Items
+            DefaultIconPackItem.Content = LocalizationManager.Text("default");
+            VipIconPackItem.Content = LocalizationManager.Text("vip");
+            LegacyIconPackItem.Content = LocalizationManager.Text("legacy");
+            CustomIconPackItem.Content = LocalizationManager.Text("Custom");
+
+            // Elite Level Dropdown Items
+            EliteLevelOffItem.Content = LocalizationManager.Text("Off");
+            EliteLevel1Item.Content = string.Format(LocalizationManager.Text("EliteLevel"), "1");
+            EliteLevel2Item.Content = string.Format(LocalizationManager.Text("EliteLevel"), "2");
+            EliteLevel3Item.Content = string.Format(LocalizationManager.Text("EliteLevel"), "3");
+
+            // Weapon Badge Dropdown Items
+            WeaponBadgeOffItem.Content = LocalizationManager.Text("Off");
+            WeaponBadgeOnItem.Content = LocalizationManager.Text("On");
+
+            // Animation Style Dropdown Items
+            AnimationStyle1Item.Content = string.Format(LocalizationManager.Text("AnimationStyle"), "1");
+            AnimationStyle2Item.Content = string.Format(LocalizationManager.Text("AnimationStyle"), "2");
 
             UpdateConnectionState(_serviceConnectionState);
             UpdateCfgStatus(_cfgDetectionState, null, _cfgStatusDetail);
@@ -1280,7 +1318,12 @@ namespace TestXboxGameBar
             string iconPack = GetSelectedIconPack();
             ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] = iconPack;
             Controls.KillConfirmAnimation.ConfigureIconPack(iconPack);
+
+            // For custom packs, detect each overlay capability independently.
+            _ = ApplyCustomPackOverlaySupportAsync(iconPack);
+
             UpdateEliteEffectSelectorState();
+            UpdateKillFxSelectorState();
             UpdateWeaponBadgeSelectorState();
 
             if (_isPageActive && string.Equals(iconPack, "legacy", StringComparison.OrdinalIgnoreCase))
@@ -1293,6 +1336,45 @@ namespace TestXboxGameBar
             }
         }
 
+        private async Task ApplyCustomPackOverlaySupportAsync(string iconPack)
+        {
+            if (!PackCatalogService.IsImportedIconPackKey(iconPack))
+            {
+                // Built-in pack — FX handled by built-in logic, no override needed
+                Controls.KillConfirmAnimation.ConfigureCustomPackOverlayCapabilities(false, false, false);
+                return;
+            }
+
+            IconPackItem item = await PackCatalogService.RefreshImportedIconPackCapabilitiesAsync(iconPack);
+            bool hasKillFx = item?.HasKillFxOverlay == true;
+            bool hasEliteOverlay = item?.HasEliteOverlay == true;
+            bool hasWeaponBadgeOverlay = item?.HasWeaponBadgeOverlay == true;
+            Controls.KillConfirmAnimation.ConfigureCustomPackOverlayCapabilities(
+                hasKillFx,
+                hasEliteOverlay,
+                hasWeaponBadgeOverlay);
+
+            // Auto-set elite effect only when the custom pack actually ships elite assets.
+            int currentElite = GetSelectedEliteEffectLevel();
+            if (!hasEliteOverlay && currentElite > 0)
+            {
+                SelectEliteEffectLevel(0);
+                ApplicationData.Current.LocalSettings.Values[EliteEffectSettingKey] = 0;
+                Controls.KillConfirmAnimation.ConfigureEliteEffectLevel(0);
+            }
+            else if (hasEliteOverlay && currentElite == 0)
+            {
+                // Default to level 1 when elite assets are present and were previously off.
+                SelectEliteEffectLevel(1);
+                ApplicationData.Current.LocalSettings.Values[EliteEffectSettingKey] = 1;
+                Controls.KillConfirmAnimation.ConfigureEliteEffectLevel(1);
+            }
+
+            UpdateEliteEffectSelectorState();
+            UpdateKillFxSelectorState();
+            UpdateWeaponBadgeSelectorState();
+        }
+
         private void OnEliteEffectSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_suppressEliteEffectEvents)
@@ -1303,6 +1385,18 @@ namespace TestXboxGameBar
             int eliteLevel = GetSelectedEliteEffectLevel();
             ApplicationData.Current.LocalSettings.Values[EliteEffectSettingKey] = eliteLevel;
             Controls.KillConfirmAnimation.ConfigureEliteEffectLevel(eliteLevel);
+        }
+
+        private void OnKillFxSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressKillFxEvents)
+            {
+                return;
+            }
+
+            bool enabled = IsKillFxEnabled();
+            ApplicationData.Current.LocalSettings.Values[KillFxSettingKey] = enabled;
+            Controls.KillConfirmAnimation.ConfigureKillFxEnabled(enabled);
         }
 
         private void OnWeaponBadgeSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1339,7 +1433,9 @@ namespace TestXboxGameBar
 
             SelectIconPack(iconPack);
             Controls.KillConfirmAnimation.ConfigureIconPack(GetSelectedIconPack());
+            _ = ApplyCustomPackOverlaySupportAsync(GetSelectedIconPack());
             UpdateEliteEffectSelectorState();
+            UpdateKillFxSelectorState();
             UpdateWeaponBadgeSelectorState();
         }
 
@@ -1360,6 +1456,24 @@ namespace TestXboxGameBar
             SelectEliteEffectLevel(eliteLevel);
             Controls.KillConfirmAnimation.ConfigureEliteEffectLevel(eliteLevel);
             UpdateEliteEffectSelectorState();
+        }
+
+        private void LoadKillFxSetting()
+        {
+            object stored = ApplicationData.Current.LocalSettings.Values[KillFxSettingKey];
+            bool enabled = true; // default ON for built-in packs
+            if (stored is bool boolValue)
+            {
+                enabled = boolValue;
+            }
+            else if (stored is string text && bool.TryParse(text, out bool parsed))
+            {
+                enabled = parsed;
+            }
+
+            SelectKillFxEnabled(enabled);
+            Controls.KillConfirmAnimation.ConfigureKillFxEnabled(enabled);
+            UpdateKillFxSelectorState();
         }
 
         private void LoadWeaponBadgeSetting()
@@ -1415,11 +1529,55 @@ namespace TestXboxGameBar
             return string.Equals(GetSelectedIconPack(), "legacy", StringComparison.OrdinalIgnoreCase);
         }
 
-        private bool SupportsOverlayEnhancementsForSelectedIconPack()
+        private bool SupportsEliteOverlayForSelectedIconPack()
         {
             string iconPack = GetSelectedIconPack();
-            return string.Equals(iconPack, "default", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(iconPack, "vip", StringComparison.OrdinalIgnoreCase);
+            if (string.Equals(iconPack, "default", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(iconPack, "vip", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (PackCatalogService.IsImportedIconPackKey(iconPack))
+            {
+                return Controls.KillConfirmAnimation.GetCustomPackHasEliteOverlay();
+            }
+
+            return false;
+        }
+
+        private bool SupportsKillFxForSelectedIconPack()
+        {
+            string iconPack = GetSelectedIconPack();
+            if (string.Equals(iconPack, "default", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(iconPack, "vip", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (PackCatalogService.IsImportedIconPackKey(iconPack))
+            {
+                return Controls.KillConfirmAnimation.GetCustomPackHasKillFx();
+            }
+
+            return false;
+        }
+
+        private bool SupportsWeaponBadgeForSelectedIconPack()
+        {
+            string iconPack = GetSelectedIconPack();
+            if (string.Equals(iconPack, "default", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(iconPack, "vip", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (PackCatalogService.IsImportedIconPackKey(iconPack))
+            {
+                return Controls.KillConfirmAnimation.GetCustomPackHasWeaponBadgeOverlay();
+            }
+
+            return false;
         }
 
         private int GetSelectedEliteEffectLevel()
@@ -1454,6 +1612,14 @@ namespace TestXboxGameBar
             }
 
             return false;
+        }
+
+        private bool IsKillFxEnabled()
+        {
+            if (KillFxSelector == null) return true;
+            return KillFxSelector.SelectedItem is ComboBoxItem item
+                && item.Tag is string tag
+                && tag == "1";
         }
 
         private int GetSelectedMainAnimationStyle()
@@ -1527,6 +1693,31 @@ namespace TestXboxGameBar
             }
         }
 
+        private void SelectKillFxEnabled(bool enabled)
+        {
+            if (KillFxSelector == null) return;
+            _suppressKillFxEvents = true;
+            try
+            {
+                string target = enabled ? "1" : "0";
+                foreach (object option in KillFxSelector.Items)
+                {
+                    if (option is ComboBoxItem item
+                        && item.Tag is string tag
+                        && string.Equals(tag, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        KillFxSelector.SelectedItem = item;
+                        return;
+                    }
+                }
+                KillFxSelector.SelectedIndex = 0;
+            }
+            finally
+            {
+                _suppressKillFxEvents = false;
+            }
+        }
+
         private void SelectWeaponBadgeEnabled(bool enabled)
         {
             if (WeaponBadgeSelector == null)
@@ -1589,26 +1780,27 @@ namespace TestXboxGameBar
 
         private void UpdateEliteEffectSelectorState()
         {
-            if (EliteEffectSelector == null)
-            {
-                return;
-            }
-
-            bool supportsEliteOverlay = SupportsOverlayEnhancementsForSelectedIconPack();
+            if (EliteEffectSelector == null) return;
+            bool supportsEliteOverlay = SupportsEliteOverlayForSelectedIconPack();
             EliteEffectSelector.IsEnabled = supportsEliteOverlay;
             EliteEffectSelector.Opacity = supportsEliteOverlay ? 1.0 : 0.55;
         }
 
         private void UpdateWeaponBadgeSelectorState()
         {
-            if (WeaponBadgeSelector == null)
-            {
-                return;
-            }
-
-            bool supportsWeaponBadge = SupportsOverlayEnhancementsForSelectedIconPack();
+            if (WeaponBadgeSelector == null) return;
+            bool supportsWeaponBadge = SupportsWeaponBadgeForSelectedIconPack();
             WeaponBadgeSelector.IsEnabled = supportsWeaponBadge;
             WeaponBadgeSelector.Opacity = supportsWeaponBadge ? 1.0 : 0.55;
+        }
+
+        private void UpdateKillFxSelectorState()
+        {
+            // Kill FX selector is always enabled — all packs can opt in or out
+            if (KillFxSelector == null) return;
+            bool supportsKillFx = SupportsKillFxForSelectedIconPack();
+            KillFxSelector.IsEnabled = supportsKillFx;
+            KillFxSelector.Opacity = supportsKillFx ? 1.0 : 0.55;
         }
 
         private void LoadVoicePackSetting()
@@ -1812,7 +2004,7 @@ namespace TestXboxGameBar
             AnimationCacheDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
             AnimationCacheBadgeText.Text = value <= 0 ? "ANI" : value + "%";
             AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
-            ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheLoading") + value + "%");
+            SetNamedToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheTitle"), LocalizationManager.Text("AnimationCacheLoading") + value + "%");
             RefreshStatusHint(false);
         }
 
@@ -1825,7 +2017,7 @@ namespace TestXboxGameBar
             AnimationCacheDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
             AnimationCacheBadgeText.Text = "ANI";
             AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 191, 208, 227));
-            ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheReady"));
+            SetNamedToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheTitle"), LocalizationManager.Text("AnimationCacheReady"));
             RefreshStatusHint(false);
         }
 
@@ -1837,7 +2029,7 @@ namespace TestXboxGameBar
             AnimationCacheDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
             AnimationCacheBadgeText.Text = "ANI";
             AnimationCacheBadgeText.Foreground = new SolidColorBrush(Color.FromArgb(255, 191, 208, 227));
-            ToolTipService.SetToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheFailed"));
+            SetNamedToolTip(AnimationCacheStatusBadge, LocalizationManager.Text("AnimationCacheTitle"), LocalizationManager.Text("AnimationCacheFailed"));
             RefreshStatusHint(false);
         }
 
@@ -2207,16 +2399,16 @@ namespace TestXboxGameBar
             {
                 case KillEventConnectionState.Connected:
                     ConnectionDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
-                    ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceRunning"));
+                    SetNamedToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTitle"), LocalizationManager.Text("ServiceRunning"));
                     HideServiceDiagnostic();
                     break;
                 case KillEventConnectionState.Connecting:
                     ConnectionDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
-                    ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStarting"));
+                    SetNamedToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTitle"), LocalizationManager.Text("ServiceStarting"));
                     break;
                 default:
                     ConnectionDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
-                    ToolTipService.SetToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceOffline"));
+                    SetNamedToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTitle"), LocalizationManager.Text("ServiceOffline"));
                     break;
             }
 
@@ -2240,23 +2432,23 @@ namespace TestXboxGameBar
             {
                 case CfgDetectionState.Ready:
                     CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
-                    ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgReadyTooltip") + _cfgStatusDetail);
+                    SetNamedToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTitle"), LocalizationManager.Text("CfgReadyTooltip") + _cfgStatusDetail);
                     break;
                 case CfgDetectionState.Checking:
                     CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
-                    ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CheckingCfgTooltip"));
+                    SetNamedToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTitle"), LocalizationManager.Text("CheckingCfgTooltip"));
                     break;
                 case CfgDetectionState.Missing:
                     CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
-                    ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("CfgMissingTooltip") + _cfgStatusDetail);
+                    SetNamedToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTitle"), LocalizationManager.Text("CfgMissingTooltip") + _cfgStatusDetail);
                     break;
                 case CfgDetectionState.Error:
                     CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
-                    ToolTipService.SetToolTip(CfgStatusBadge, _cfgStatusDetail);
+                    SetNamedToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTitle"), _cfgStatusDetail);
                     break;
                 default:
                     CfgDot.Background = new SolidColorBrush(Color.FromArgb(255, 107, 114, 128));
-                    ToolTipService.SetToolTip(CfgStatusBadge, LocalizationManager.Text("SelectCsRootTooltip"));
+                    SetNamedToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTitle"), LocalizationManager.Text("SelectCsRootTooltip"));
                     break;
             }
 
@@ -2270,22 +2462,22 @@ namespace TestXboxGameBar
             if (recentlySeen)
             {
                 GsiDot.Background = new SolidColorBrush(Color.FromArgb(255, 52, 211, 153));
-                ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiReceivingTooltip"));
+                SetNamedToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTitle"), LocalizationManager.Text("GsiReceivingTooltip"));
             }
             else if (serviceReachable && posts > 0)
             {
                 GsiDot.Background = new SolidColorBrush(Color.FromArgb(255, 251, 191, 36));
-                ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStaleTooltip"));
+                SetNamedToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTitle"), LocalizationManager.Text("GsiStaleTooltip"));
             }
             else if (serviceReachable)
             {
                 GsiDot.Background = new SolidColorBrush(Color.FromArgb(255, 107, 114, 128));
-                ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("GsiWaitingTooltip"));
+                SetNamedToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTitle"), LocalizationManager.Text("GsiWaitingTooltip"));
             }
             else
             {
                 GsiDot.Background = new SolidColorBrush(Color.FromArgb(255, 248, 113, 113));
-                ToolTipService.SetToolTip(GsiStatusBadge, LocalizationManager.Text("ServiceOffline"));
+                SetNamedToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTitle"), LocalizationManager.Text("ServiceOffline"));
             }
 
             RefreshStatusHint(false);
@@ -2334,6 +2526,7 @@ namespace TestXboxGameBar
 
             hints.Add(new StatusHint(LocalizationManager.Text("DisableClickThroughHint"), Color.FromArgb(255, 251, 191, 36)));
             hints.Add(new StatusHint(LocalizationManager.Text("DisableFullscreenOptimizationsHint"), Color.FromArgb(255, 251, 191, 36)));
+            hints.Add(new StatusHint(LocalizationManager.Text("CustomIconSettingsHint"), Color.FromArgb(255, 251, 191, 36)));
             hints.Add(new StatusHint(LocalizationManager.Text("ProxyPortHint"), Color.FromArgb(255, 251, 191, 36)));
 
             bool serviceReady = _serviceConnectionState == KillEventConnectionState.Connected;
@@ -2369,6 +2562,33 @@ namespace TestXboxGameBar
             PinHintText.Foreground = new SolidColorBrush(color);
             StatusHintPagerText.Text = total > 0 ? $"{index + 1}/{total}" : string.Empty;
             ToolTipService.SetToolTip(StatusHintBox, text);
+        }
+
+        private static void SetNamedToolTip(DependencyObject target, string title, string description)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            ToolTipService.SetToolTip(target, BuildToolTipText(title, description));
+        }
+
+        private static string BuildToolTipText(string title, string description)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return description ?? string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(description))
+            {
+                return title;
+            }
+
+            return string.Equals(title, description, StringComparison.Ordinal)
+                ? title
+                : title + "\n" + description;
         }
 
         private string GetServiceStatusHint()
